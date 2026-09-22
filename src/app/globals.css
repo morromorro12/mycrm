@@ -1,0 +1,140 @@
+@import "tailwindcss";
+
+/* Paleta corta y de alto contraste: la app se usa con el celular en la mano,
+   muchas veces con sol. Nada de grises lavados. */
+@theme {
+  --color-bg: #f6f7f9;
+  --color-surface: #ffffff;
+  --color-line: #e3e6ea;
+  --color-ink: #10151c;
+  --color-muted: #667085;
+  --color-brand: #1f6feb;
+  --color-ok: #087443;
+  --color-ok-bg: #e4f7ed;
+  --color-warn: #8a5800;
+  --color-warn-bg: #fdf3d8;
+  --color-bad: #b3261e;
+  --color-bad-bg: #fdeceb;
+  --color-wa: #1da851;
+}
+
+/* Tailwind v4 sólo acepta @theme en el nivel superior: dentro de un @media
+   las variables se emitirían siempre y el tema oscuro pisaría al claro.
+   Por eso el modo oscuro redefine las custom properties con CSS común. */
+:root {
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg: #0d1117;
+    --color-surface: #161b22;
+    --color-line: #2a313c;
+    --color-ink: #e9eef5;
+    --color-muted: #9aa5b4;
+    --color-brand: #4c9aff;
+    --color-ok: #4ade80;
+    --color-ok-bg: #0e2b1d;
+    --color-warn: #fbbf24;
+    --color-warn-bg: #2e2410;
+    --color-bad: #f87171;
+    --color-bad-bg: #331917;
+  }
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Deja lugar a la barra de tabs del celular. */
+  padding-bottom: calc(4.25rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 768px) {
+  body { padding-bottom: 0; }
+}
+
+/* Los inputs por debajo de 16px hacen que iOS haga zoom al tocarlos. */
+input, select, textarea, button {
+  font: inherit;
+  font-size: max(16px, 1rem);
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-line);
+    border-radius: 0.75rem;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    border-radius: 0.6rem;
+    padding: 0.6rem 0.9rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    cursor: pointer;
+    /* Objetivo táctil cómodo sin agrandar el texto. */
+    min-height: 2.6rem;
+  }
+  .btn:hover { border-color: var(--color-muted); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
+  .btn-primary {
+    background: var(--color-brand);
+    border-color: var(--color-brand);
+    color: #fff;
+  }
+  .btn-wa {
+    background: var(--color-wa);
+    border-color: var(--color-wa);
+    color: #fff;
+  }
+  .field {
+    width: 100%;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-line);
+    background: var(--color-surface);
+    color: var(--color-ink);
+    padding: 0.6rem 0.7rem;
+    min-height: 2.7rem;
+  }
+  .field:focus {
+    outline: 2px solid var(--color-brand);
+    outline-offset: -1px;
+  }
+  .label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--color-muted);
+    margin-bottom: 0.3rem;
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    border-radius: 999px;
+    padding: 0.15rem 0.55rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+}
+
+/* El kanban scrollea de a columnas completas en el celular. */
+.snap-cols {
+  scroll-snap-type: x mandatory;
+}
+.snap-cols > * {
+  scroll-snap-align: start;
+}
