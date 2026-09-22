@@ -134,16 +134,21 @@ export const demoRepo: Repo = {
     }
   },
 
-  async recordPayment({ clientId, serviceId, period, amount, currency, paidAt }) {
+  async recordPayment({ clientId, serviceId, period, amount, currency, paidAt, kind }) {
     const c = store().clients.find((x) => x.id === clientId);
     if (!c) return;
     // Mismo efecto que el índice único de Postgres: un pago por servicio y mes.
-    if (c.payments.some((p) => p.service_id === serviceId && p.period === period)) return;
+    if (kind === "inicial") {
+      if (c.payments.some((p) => p.kind === "inicial")) return; // uno por cliente
+    } else if (c.payments.some((p) => p.service_id === serviceId && p.period === period)) {
+      return;
+    }
     const p: Payment = {
       id: id(),
       client_id: clientId,
       service_id: serviceId,
       period,
+      kind,
       amount,
       currency,
       paid_at: paidAt,

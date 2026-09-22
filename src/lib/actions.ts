@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentPeriod, todayISO } from "./dates";
+import { isFreeMonth } from "./billing";
 import { repo } from "./data";
 import type {
   CurrencyCode,
@@ -16,6 +17,17 @@ import type {
  * Los agregados del dashboard dependen de todo, así que después de cualquier
  * cambio se refresca la app entera. Con este volumen de datos es instantáneo.
  */
+/** Campos del pago inicial, compartidos por alta y conversión de prospecto. */
+function parseSetup(fd: FormData) {
+  const amount = Number(String(fd.get("setup_amount") ?? "").replace(",", ".")) || 0;
+  return {
+    setup_amount: amount > 0 ? amount : null,
+    setup_currency: (String(fd.get("setup_currency") || "UYU")) as CurrencyCode,
+    setup_due_on: amount > 0 ? (String(fd.get("setup_due_on") ?? "").trim() || null) : null,
+    setup_note: amount > 0 ? (String(fd.get("setup_note") ?? "").trim() || null) : null,
+  };
+}
+
 function refresh() {
   revalidatePath("/", "layout");
 }
@@ -110,6 +122,7 @@ export async function convertProspect(prospectId: string, fd: FormData) {
       contact_name: orNull(fd, "contact_name") ?? p.contact_name,
       phone: orNull(fd, "phone") ?? p.phone,
       notes: orNull(fd, "notes") ?? p.notes,
+          ...parseSetup(fd),
     },
     services,
   );
@@ -128,6 +141,9 @@ function parseServices(fd: FormData) {
   const amounts = fd.getAll("svc_amount").map(String);
   const currencies = fd.getAll("svc_currency").map(String);
   const days = fd.getAll("svc_day").map(String);
+  const starts = fd.getAll("svc_starts_on").map(String);
+  // Los checkbox sin marcar no se envían, así que vienen como lista de índices.
+  const free = new Set(fd.getAll("svc_free").map(String));
 
   return kinds
     .map((kind, i) => ({
@@ -136,6 +152,8 @@ function parseServices(fd: FormData) {
       currency: (currencies[i] || "UYU") as CurrencyCode,
       billing_day: Math.min(31, Math.max(1, Number(days[i]) || 1)),
       active: true,
+      starts_on: starts[i] || todayISO(),
+      first_month_free: free.has(String(i)),
     }))
     .filter((s) => s.kind && s.amount > 0);
 }
@@ -149,6 +167,7 @@ export async function createClient(fd: FormData) {
       contact_name: orNull(fd, "contact_name"),
       phone: orNull(fd, "phone"),
       notes: orNull(fd, "notes"),
+          ...parseSetup(fd),
     },
     parseServices(fd),
   );
@@ -213,6 +232,8 @@ export async function addService(clientId: string, fd: FormData) {
     currency: (str(fd, "currency") || "UYU") as CurrencyCode,
     billing_day: Math.min(31, Math.max(1, Number(str(fd, "billing_day")) || 1)),
     active: true,
+    starts_on: str(fd, "starts_on") || todayISO(),
+    first_month_free: fd.get("first_month_free") === "on",
   });
   refresh();
 }
@@ -223,6 +244,8 @@ export async function updateService(id: string, fd: FormData) {
     amount: num(fd, "amount"),
     currency: (str(fd, "currency") || "UYU") as CurrencyCode,
     billing_day: Math.min(31, Math.max(1, Number(str(fd, "billing_day")) || 1)),
+    starts_on: str(fd, "starts_on") || todayISO(),
+    first_month_free: fd.get("first_month_free") === "on",
   });
   refresh();
 }
@@ -234,6 +257,32 @@ export async function toggleService(id: string, active: boolean) {
 
 export async function deleteService(id: string) {
   await repo().deleteService(id);
+  refresh();
+}
+
+// ── Pago inicial ────────────────────────────────────────────────────────────
+
+/** Cargar o editar el pago inicial de un cliente ya existente. */
+export async function saveSetup(clientId: string, fd: FormData) {
+  await repo().updateClient(clientId, parseSetup(fd));
+  refresh();
+}
+
+/** Marcarlo cobrado. Queda en el historial igual que los mensuales. */
+export async function markSetupPaid(clientId: string) {
+  const r = repo();
+  const client = await r.getClient(clientId);
+  if (!client?.setup_amount) return;
+
+  await r.recordPayment({
+    clientId,
+    serviceId: "",
+    period: currentPeriod(),
+    amount: client.setup_amount,
+    currency: client.setup_currency,
+    paidAt: todayISO(),
+    kind: "inicial",
+  });
   refresh();
 }
 
@@ -256,6 +305,7 @@ export async function markServicePaid(clientId: string, serviceId: string) {
     amount: svc.amount,
     currency: svc.currency,
     paidAt: todayISO(),
+    kind: "mensual",
   });
   refresh();
 }
@@ -277,6 +327,7 @@ export async function markClientPaid(clientId: string) {
       (p) => p.service_id === svc.id && p.period === period,
     );
     if (already) continue;
+    if (isFreeMonth(svc)) continue; // mes de promo: no hay nada que cobrar
     await r.recordPayment({
       clientId,
       serviceId: svc.id,
@@ -284,6 +335,7 @@ export async function markClientPaid(clientId: string) {
       amount: svc.amount,
       currency: svc.currency,
       paidAt,
+      kind: "mensual",
     });
   }
   refresh();

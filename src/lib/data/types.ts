@@ -1,5 +1,6 @@
 import type {
   Client,
+  PaymentKind,
   ClientFull,
   ClientService,
   CurrencyCode,
@@ -53,6 +54,7 @@ export interface Repo {
     amount: number;
     currency: CurrencyCode;
     paidAt: string;
+    kind: PaymentKind;
   }): Promise<void>;
   deletePayment(id: string): Promise<void>;
   listPayments(clientId: string): Promise<Payment[]>;

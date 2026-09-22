@@ -97,6 +97,20 @@ toca nunca.
 
 Detalle: si un servicio cobra el 31 y el mes tiene 30 días, vence el 30.
 
+### Pago inicial y mes gratis
+
+Un cliente puede tener, además de sus servicios mensuales, un **pago inicial**:
+el cobro de arranque del proyecto (armado del sitio, setup de campañas). Es uno
+por cliente, por única vez, y **no entra en el MRR** porque no se repite. Sí
+aparece en "Atención hoy" mientras esté sin cobrar, y en el historial una vez
+cobrado.
+
+Cada servicio mensual puede tener **primer mes gratis**: el mes de su fecha de
+inicio no se cobra. Ese mes el servicio muestra "Mes gratis" en vez de
+pendiente/vencido, no cuenta como deuda y no lleva botón de cobro. El MRR sigue
+mostrando el monto contratado —el acuerdo vale eso— y el dashboard aclara abajo
+cuánto no se cobra este mes por promo, para que los números cierren a la vista.
+
 ### Nada se borra de un toque
 
 El botón de las fichas dice **Archivar**, no borrar: el cliente o prospecto sale

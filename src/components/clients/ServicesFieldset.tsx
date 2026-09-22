@@ -11,22 +11,26 @@ interface Row {
   amount: string;
   currency: "UYU" | "USD";
   day: string;
+  startsOn: string;
+  free: boolean;
 }
 
-const blank = (key: number): Row => ({
+const blank = (key: number, today: string): Row => ({
   key,
   kind: "retainer",
   amount: "",
   currency: "UYU",
   day: "1",
+  startsOn: today,
+  free: false,
 });
 
 /**
  * Filas de servicios contratados. Cada una con su monto, su moneda y su día
  * de cobro — un cliente puede tener web + retainer + ads al mismo tiempo.
  */
-export function ServicesFieldset() {
-  const [rows, setRows] = useState<Row[]>([blank(0)]);
+export function ServicesFieldset({ today }: { today: string }) {
+  const [rows, setRows] = useState<Row[]>([blank(0, today)]);
   const [seq, setSeq] = useState(1);
 
   const patch = (key: number, p: Partial<Row>) =>
@@ -95,6 +99,28 @@ export function ServicesFieldset() {
               </select>
             </label>
 
+            <label className="col-span-2">
+              <span className="label">Arranca el</span>
+              <input
+                name="svc_starts_on"
+                type="date"
+                value={r.startsOn}
+                onChange={(e) => patch(r.key, { startsOn: e.target.value })}
+                className="field !min-h-[2.5rem]"
+              />
+            </label>
+            <label className="col-span-2 flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={r.free}
+                onChange={(e) => patch(r.key, { free: e.target.checked })}
+                className="h-4 w-4"
+              />
+              Primer mes gratis
+              {/* El valor es el índice: así el server sabe qué fila va gratis. */}
+              {r.free && <input type="hidden" name="svc_free" value={i} />}
+            </label>
+
             {rows.length > 1 && (
               <button
                 type="button"
@@ -111,7 +137,7 @@ export function ServicesFieldset() {
       <button
         type="button"
         onClick={() => {
-          setRows((rs) => [...rs, blank(seq)]);
+          setRows((rs) => [...rs, blank(seq, today)]);
           setSeq((s) => s + 1);
         }}
         className="mt-3 text-sm font-semibold text-brand"

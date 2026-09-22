@@ -2,6 +2,7 @@ import {
   currentPeriod,
   dayOfMonth,
   effectiveBillingDay,
+  periodOf,
   todayISO,
 } from "./dates";
 import { ZERO, addMoney, type MoneyByCurrency } from "./money";
@@ -27,12 +28,23 @@ export function isPaid(
   return payments.some((p) => p.service_id === service.id && p.period === period);
 }
 
+/**
+ * ¿Este mes es el mes de promo del servicio?
+ * Es el mes en que arrancó, y sólo si tiene marcado "primer mes gratis".
+ */
+export function isFreeMonth(service: ClientService, today = todayISO()): boolean {
+  if (!service.first_month_free) return false;
+  return periodOf(today) === periodOf(service.starts_on);
+}
+
 export function serviceStatus(
   service: ClientService,
   payments: Payment[],
   today = todayISO(),
 ): PaymentStatus {
   if (isPaid(service, payments, `${today.slice(0, 7)}-01`)) return "pagado";
+  // El mes gratis no es una deuda: no vence ni queda pendiente.
+  if (isFreeMonth(service, today)) return "gratis";
   const due = effectiveBillingDay(service.billing_day, today);
   // El mismo día de cobro todavía no está vencido: vence al día siguiente.
   return dayOfMonth(today) > due ? "vencido" : "pendiente";
@@ -45,10 +57,17 @@ export function isDueToday(
   today = todayISO(),
 ): boolean {
   if (isPaid(service, payments, `${today.slice(0, 7)}-01`)) return false;
+  if (isFreeMonth(service, today)) return false;
   return dayOfMonth(today) === effectiveBillingDay(service.billing_day, today);
 }
 
-const SEVERITY: Record<PaymentStatus, number> = { pagado: 0, pendiente: 1, vencido: 2 };
+// `gratis` y `pagado` pesan igual: en ninguno de los dos hay plata por cobrar.
+const SEVERITY: Record<PaymentStatus, number> = {
+  pagado: 0,
+  gratis: 0,
+  pendiente: 1,
+  vencido: 2,
+};
 
 /** Estado del cliente = el peor estado entre sus servicios activos. */
 export function clientStatus(client: ClientFull, today = todayISO()): PaymentStatus {
@@ -71,6 +90,44 @@ export function mrr(clients: ClientFull[]): MoneyByCurrency {
   return total;
 }
 
+// ── Pago inicial ────────────────────────────────────────────────────────────
+// El cobro de arranque del proyecto. Uno por cliente, no se repite, y por eso
+// NO entra en el MRR. Pero sí tiene que aparecer en "atención hoy": suele ser
+// el importe más grande de todos y es el más fácil de que se pase.
+
+export function setupPayment(client: ClientFull): Payment | undefined {
+  return client.payments.find((p) => p.kind === "inicial");
+}
+
+/** null = este cliente no tiene pago inicial cargado. */
+export function setupStatus(
+  client: ClientFull,
+  today = todayISO(),
+): PaymentStatus | null {
+  if (client.setup_amount == null || client.setup_amount <= 0) return null;
+  if (setupPayment(client)) return "pagado";
+  if (client.setup_due_on && client.setup_due_on < today) return "vencido";
+  return "pendiente";
+}
+
+/** Total de pagos iniciales todavía sin cobrar, por moneda. */
+export function pendingSetups(
+  clients: ClientFull[],
+  today = todayISO(),
+): { totals: MoneyByCurrency; count: number } {
+  let totals = ZERO;
+  let count = 0;
+  for (const c of clients) {
+    if (!c.active) continue;
+    const st = setupStatus(c, today);
+    if (st === "pendiente" || st === "vencido") {
+      totals = addMoney(totals, c.setup_currency, c.setup_amount ?? 0);
+      count++;
+    }
+  }
+  return { totals, count };
+}
+
 export interface MonthSummary {
   /** Ya entró este mes. */
   collected: MoneyByCurrency;
@@ -79,6 +136,11 @@ export interface MonthSummary {
   /** Sólo lo vencido (subconjunto de `pending`). */
   overdue: MoneyByCurrency;
   overdueClients: number;
+  /**
+   * Lo que este mes no se cobra por estar de promo. Explica por qué el MRR
+   * no coincide con cobrado + pendiente.
+   */
+  free: MoneyByCurrency;
 }
 
 /** Cobrado vs pendiente del mes en curso. */
@@ -89,6 +151,7 @@ export function monthSummary(
   let collected = ZERO;
   let pending = ZERO;
   let overdue = ZERO;
+  let free = ZERO;
   let overdueClients = 0;
 
   for (const c of clients) {
@@ -97,6 +160,11 @@ export function monthSummary(
     for (const s of c.services) {
       if (!s.active) continue;
       const status = serviceStatus(s, c.payments, today);
+      // Un mes de promo no entró ni está por entrar: queda fuera de las dos.
+      if (status === "gratis") {
+        free = addMoney(free, s.currency, s.amount);
+        continue;
+      }
       if (status === "pagado") {
         collected = addMoney(collected, s.currency, s.amount);
       } else {
@@ -110,7 +178,7 @@ export function monthSummary(
     if (hasOverdue) overdueClients++;
   }
 
-  return { collected, pending, overdue, overdueClients };
+  return { collected, pending, overdue, overdueClients, free };
 }
 
 // ── Atención hoy ────────────────────────────────────────────────────────────
@@ -127,6 +195,8 @@ export interface AttentionClient {
   client: ClientFull;
   status: Extract<PaymentStatus, "vencido" | "pendiente">;
   services: ClientService[];
+  /** true = lo que falta cobrar es el pago inicial, no la cuota del mes. */
+  setup: boolean;
 }
 
 export type AttentionItem = AttentionProspect | AttentionClient;
@@ -160,6 +230,13 @@ export function attentionItems(
 
   for (const c of clients) {
     if (!c.active) continue;
+
+    // El pago inicial va como fila aparte: es otro cobro, con otro monto.
+    const setup = setupStatus(c, today);
+    if (setup === "vencido" || setup === "pendiente") {
+      items.push({ kind: "client", client: c, status: setup, services: [], setup: true });
+    }
+
     const due = c.services.filter(
       (s) =>
         s.active &&
@@ -172,6 +249,7 @@ export function attentionItems(
       client: c,
       status: overdue ? "vencido" : "pendiente",
       services: due,
+      setup: false,
     });
   }
 

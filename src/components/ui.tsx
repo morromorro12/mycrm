@@ -7,12 +7,14 @@ const STATUS_STYLE: Record<PaymentStatus, string> = {
   pagado: "bg-ok-bg text-ok",
   pendiente: "bg-warn-bg text-warn",
   vencido: "bg-bad-bg text-bad",
+  gratis: "bg-brand/10 text-brand",
 };
 
 const STATUS_LABEL: Record<PaymentStatus, string> = {
   pagado: "Pagado",
   pendiente: "Pendiente",
   vencido: "Vencido",
+  gratis: "Mes gratis",
 };
 
 /** Verde / amarillo / rojo. El punto ayuda si mirás la pantalla de reojo. */

@@ -34,7 +34,7 @@ export function ClientsView({ clients, today }: { clients: ClientFull[]; today: 
       .sort((a, b) => {
         // Pausados últimos; entre los activos, primero lo que hay que cobrar.
         const rank = (s: PaymentStatus | null) =>
-          s === null ? 3 : { vencido: 0, pendiente: 1, pagado: 2 }[s];
+          s === null ? 3 : { vencido: 0, pendiente: 1, pagado: 2, gratis: 2 }[s];
         return (
           rank(a.status) - rank(b.status) ||
           a.client.business_name.localeCompare(b.client.business_name, "es")
@@ -125,6 +125,7 @@ const STRIPE: Record<PaymentStatus | "pausado", string> = {
   pagado: "border-l-ok",
   pendiente: "border-l-warn",
   vencido: "border-l-bad",
+  gratis: "border-l-brand",
   pausado: "border-l-line",
 };
 
@@ -169,7 +170,7 @@ function Card({
         </div>
         <div className="flex gap-2">
           <WhatsAppButton phone={client.phone} compact />
-          {status !== null && status !== "pagado" && <PayButton client={client} />}
+          {(status === "pendiente" || status === "vencido") && <PayButton client={client} />}
         </div>
       </div>
     </div>
@@ -226,7 +227,7 @@ function Row({
       <td className="px-3 py-2">
         <div className="flex justify-end gap-2">
           <WhatsAppButton phone={client.phone} compact />
-          {status !== null && status !== "pagado" && <PayButton client={client} />}
+          {(status === "pendiente" || status === "vencido") && <PayButton client={client} />}
         </div>
       </td>
     </tr>

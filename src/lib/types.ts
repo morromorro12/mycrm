@@ -12,7 +12,10 @@ export type ServiceInterest = "web" | "ads" | "ambos";
 export type LeadSource = "frio" | "in_person" | "referido";
 export type CurrencyCode = "UYU" | "USD";
 export type ServiceKind = "web" | "retainer" | "ads";
-export type PaymentStatus = "pagado" | "pendiente" | "vencido";
+/** `gratis` = mes de promo: no hay nada que cobrar y no es una deuda. */
+export type PaymentStatus = "pagado" | "pendiente" | "vencido" | "gratis";
+
+export type PaymentKind = "mensual" | "inicial";
 
 export interface Prospect {
   id: string;
@@ -39,6 +42,10 @@ export interface ClientService {
   currency: CurrencyCode;
   billing_day: number; // 1..31
   active: boolean;
+  /** Desde cuándo corre. Define cuál es "el primer mes". */
+  starts_on: string; // YYYY-MM-DD
+  /** Promo de cierre: el mes de `starts_on` no se cobra. */
+  first_month_free: boolean;
 }
 
 export interface Payment {
@@ -46,6 +53,7 @@ export interface Payment {
   client_id: string;
   service_id: string | null;
   period: string; // YYYY-MM-01, el mes que cubre
+  kind: PaymentKind;
   amount: number;
   currency: CurrencyCode;
   paid_at: string; // YYYY-MM-DD
@@ -58,6 +66,14 @@ export interface Client {
   contact_name: string | null;
   phone: string | null;
   notes: string | null;
+  /**
+   * Pago inicial: el cobro de arranque del proyecto, uno por cliente.
+   * No entra en el MRR porque no se repite. null = este cliente no tiene.
+   */
+  setup_amount: number | null;
+  setup_currency: CurrencyCode;
+  setup_due_on: string | null;
+  setup_note: string | null;
   /** false = pausado: sigue siendo cliente, pero no cuenta para MRR ni cobros. */
   active: boolean;
   /** Archivado: sale de todas las listas, pero no se borra nada. */
@@ -100,6 +116,13 @@ export const INTEREST_LABEL: Record<ServiceInterest, string> = {
   web: "Web",
   ads: "Ads",
   ambos: "Web + Ads",
+};
+
+export const STATUS_LABEL: Record<PaymentStatus, string> = {
+  pagado: "Pagado",
+  pendiente: "Pendiente",
+  vencido: "Vencido",
+  gratis: "Gratis",
 };
 
 export const KIND_LABEL: Record<ServiceKind, string> = {

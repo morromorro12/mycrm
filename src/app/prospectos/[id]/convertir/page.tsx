@@ -1,8 +1,10 @@
 import { notFound } from "next/navigation";
 import { SubmitButton } from "@/components/ActionButton";
 import { ServicesFieldset } from "@/components/clients/ServicesFieldset";
+import { SetupFieldset } from "@/components/clients/SetupFieldset";
 import { BackLink, PageTitle } from "@/components/ui";
 import { convertProspect } from "@/lib/actions";
+import { todayISO } from "@/lib/dates";
 import { repo } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +39,9 @@ export default async function ConvertProspect({ params }: { params: Promise<{ id
           </label>
         </div>
 
-        <ServicesFieldset />
+        <SetupFieldset />
+
+        <ServicesFieldset today={todayISO()} />
 
         <label>
           <span className="label">Notas de cuenta</span>

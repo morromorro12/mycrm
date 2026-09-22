@@ -148,23 +148,42 @@ export const supabaseRepo: Repo = {
     check(await db().from("client_services").delete().eq("id", id), "borrar servicio");
   },
 
-  async recordPayment({ clientId, serviceId, period, amount, currency, paidAt }) {
+  async recordPayment({ clientId, serviceId, period, amount, currency, paidAt, kind }) {
+    const row = {
+      client_id: clientId,
+      service_id: kind === "inicial" ? null : serviceId,
+      period,
+      kind,
+      amount,
+      currency,
+      paid_at: paidAt,
+    };
+
+    if (kind === "inicial") {
+      // El índice del pago inicial es parcial, así que ON CONFLICT no lo puede
+      // inferir: se consulta antes de insertar.
+      const prev = check(
+        await db()
+          .from("payments")
+          .select("id")
+          .eq("client_id", clientId)
+          .eq("kind", "inicial")
+          .maybeSingle(),
+        "buscar pago inicial",
+      );
+      if (prev) return;
+      check(await db().from("payments").insert(row), "registrar pago inicial");
+      return;
+    }
+
     // onConflict sobre (service_id, period): tocar el botón dos veces no
     // duplica el pago.
-    const r = await db()
-      .from("payments")
-      .upsert(
-        {
-          client_id: clientId,
-          service_id: serviceId,
-          period,
-          amount,
-          currency,
-          paid_at: paidAt,
-        },
-        { onConflict: "service_id,period", ignoreDuplicates: true },
-      );
-    check(r, "registrar pago");
+    check(
+      await db()
+        .from("payments")
+        .upsert(row, { onConflict: "service_id,period", ignoreDuplicates: true }),
+      "registrar pago",
+    );
   },
 
   async deletePayment(id) {

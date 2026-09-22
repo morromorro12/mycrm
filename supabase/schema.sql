@@ -28,6 +28,11 @@ do $$ begin
   create type service_kind as enum ('web','retainer','ads');
 exception when duplicate_object then null; end $$;
 
+-- 'mensual' = la cuota del mes. 'inicial' = el cobro de arranque del proyecto.
+do $$ begin
+  create type payment_kind as enum ('mensual','inicial');
+exception when duplicate_object then null; end $$;
+
 -- ── Clientes activos ────────────────────────────────────────────────────────
 create table if not exists clients (
   id            uuid primary key default gen_random_uuid(),
@@ -37,6 +42,13 @@ create table if not exists clients (
   notes         text,                       -- notas de cuenta
   active        boolean     not null default true,  -- false = pausado (sigue siendo cliente)
   archived      boolean     not null default false, -- true = archivado (fuera de las listas)
+  -- Pago inicial: el cobro de arranque (armado de la web, setup de ads…).
+  -- Es UNO por cliente y no entra en el MRR: no es recurrente.
+  -- setup_amount null = este cliente no tiene pago inicial.
+  setup_amount    numeric(12,2) check (setup_amount is null or setup_amount >= 0),
+  setup_currency  currency_code not null default 'UYU',
+  setup_due_on    date,                     -- para cuándo lo esperás (opcional)
+  setup_note      text,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
@@ -50,6 +62,10 @@ create table if not exists client_services (
   currency    currency_code not null default 'UYU',
   billing_day smallint      not null default 1 check (billing_day between 1 and 31),
   active      boolean       not null default true,
+  -- Desde cuándo corre el servicio. Define cuál es "el primer mes".
+  starts_on   date          not null default current_date,
+  -- Promo de cierre: el mes de starts_on no se cobra.
+  first_month_free boolean  not null default false,
   created_at  timestamptz   not null default now(),
   updated_at  timestamptz   not null default now()
 );
@@ -64,6 +80,7 @@ create table if not exists payments (
   client_id  uuid          not null references clients(id) on delete cascade,
   service_id uuid          references client_services(id) on delete set null,
   period     date          not null,
+  kind       payment_kind  not null default 'mensual',
   amount     numeric(12,2) not null,
   currency   currency_code not null,
   paid_at    date          not null default current_date,
@@ -81,6 +98,12 @@ create index if not exists payments_client_period_idx on payments (client_id, pe
 -- como distinto.
 create unique index if not exists payments_service_period_key
   on payments (service_id, period);
+
+-- Y un solo pago inicial por cliente. Este sí puede ser parcial: el upsert con
+-- ON CONFLICT es sólo para los mensuales, el inicial se consulta antes de
+-- insertar.
+create unique index if not exists payments_setup_key
+  on payments (client_id) where kind = 'inicial';
 
 -- ── Prospectos ──────────────────────────────────────────────────────────────
 create table if not exists prospects (
@@ -114,6 +137,15 @@ alter table prospects add column if not exists archived boolean not null default
 -- y el archivo se consulta de vez en cuando.
 create index if not exists clients_archived_idx   on clients (archived)   where archived;
 create index if not exists prospects_archived_idx on prospects (archived) where archived;
+
+-- Pago inicial y primer mes gratis.
+alter table clients add column if not exists setup_amount   numeric(12,2);
+alter table clients add column if not exists setup_currency currency_code not null default 'UYU';
+alter table clients add column if not exists setup_due_on   date;
+alter table clients add column if not exists setup_note     text;
+alter table client_services add column if not exists starts_on        date    not null default current_date;
+alter table client_services add column if not exists first_month_free boolean not null default false;
+alter table payments        add column if not exists kind             payment_kind not null default 'mensual';
 
 -- ── updated_at automático ───────────────────────────────────────────────────
 create or replace function touch_updated_at() returns trigger

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { markClientPaid, snoozeProspect, touchProspect } from "@/lib/actions";
+import { markClientPaid, markSetupPaid, snoozeProspect, touchProspect } from "@/lib/actions";
 import type { AttentionItem } from "@/lib/billing";
 import { relativeDay } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
@@ -20,7 +20,7 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
     <ul className="grid gap-2">
       {items.map((item) =>
         item.kind === "client" ? (
-          <ClientRow key={`c-${item.client.id}`} item={item} />
+          <ClientRow key={`c-${item.client.id}-${item.setup ? "ini" : "mes"}`} item={item} />
         ) : (
           <ProspectRow key={`p-${item.prospect.id}`} item={item} />
         ),
@@ -31,39 +31,57 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
 
 function ClientRow({ item }: { item: Extract<AttentionItem, { kind: "client" }> }) {
   const { client, services, status } = item;
-  const total = services
-    .map((s) => formatMoney(s.amount, s.currency))
-    .join(" + ");
   const overdue = status === "vencido";
+
+  // El pago inicial es otro cobro, con otro monto y su propio botón.
+  const total = item.setup
+    ? formatMoney(client.setup_amount ?? 0, client.setup_currency)
+    : services.map((s) => formatMoney(s.amount, s.currency)).join(" + ");
+  const detail = item.setup
+    ? (client.setup_note ?? "Pago inicial")
+    : services.map((s) => KIND_LABEL[s.kind]).join(", ");
+  const chip = item.setup
+    ? overdue
+      ? "Pago inicial vencido"
+      : "Pago inicial pendiente"
+    : overdue
+      ? "Cobro vencido"
+      : "Vence hoy";
 
   return (
     <li className={`card p-3 ${overdue ? "border-l-4 border-l-bad" : "border-l-4 border-l-warn"}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <span className={`chip ${overdue ? "bg-bad-bg text-bad" : "bg-warn-bg text-warn"}`}>
-            {overdue ? "Cobro vencido" : "Vence hoy"}
+            {chip}
           </span>
           <Link href={`/clientes/${client.id}`} className="mt-1.5 block truncate font-bold hover:underline">
             {client.business_name}
           </Link>
           <p className="truncate text-sm text-muted">
-            {total} · {services.map((s) => KIND_LABEL[s.kind]).join(", ")}
+            {total} · {detail}
           </p>
         </div>
       </div>
 
       <div className="mt-2.5 flex flex-wrap gap-2">
         <ActionButton
-          action={markClientPaid.bind(null, client.id)}
+          action={
+            item.setup
+              ? markSetupPaid.bind(null, client.id)
+              : markClientPaid.bind(null, client.id)
+          }
           className="btn btn-primary !min-h-[2.3rem] flex-1 md:flex-none"
           pendingLabel="Marcando…"
         >
-          Marcar pagado
+          {item.setup ? "Cobré el inicial" : "Marcar pagado"}
         </ActionButton>
         <WhatsAppButton
           phone={client.phone}
           compact
-          text={`Hola ${client.contact_name ?? ""}! Te escribo por el pago de este mes.`.replace("  ", " ")}
+          text={`Hola ${client.contact_name ?? ""}! Te escribo por el ${
+            item.setup ? "pago inicial" : "pago de este mes"
+          }.`.replace("  ", " ")}
         />
       </div>
     </li>

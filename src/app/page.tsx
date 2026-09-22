@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AttentionList } from "@/components/AttentionList";
 import { PageTitle } from "@/components/ui";
-import { attentionItems, monthSummary, mrr } from "@/lib/billing";
+import { attentionItems, monthSummary, mrr, pendingSetups } from "@/lib/billing";
 import { repo } from "@/lib/data";
 import { currentPeriod, periodLabel, todayISO } from "@/lib/dates";
 import { formatMoney, formatTotals, type MoneyByCurrency } from "@/lib/money";
@@ -17,6 +17,7 @@ export default async function Dashboard() {
   const recurring = mrr(clients);
   const month = monthSummary(clients, today);
   const items = attentionItems(prospects, clients, today);
+  const setups = pendingSetups(clients, today);
 
   const openPipeline = prospects.filter(
     (p) => p.stage !== "ganado" && p.stage !== "perdido",
@@ -43,7 +44,10 @@ export default async function Dashboard() {
             </span>
           ))}
         </div>
-        <p className="mt-1 text-xs text-muted">Suma de todos los servicios activos, por mes.</p>
+        <p className="mt-1 text-xs text-muted">
+          Suma de todos los servicios activos, por mes. Los pagos iniciales no cuentan:
+          no se repiten.
+        </p>
       </section>
 
       {/* Cobrado vs pendiente */}
@@ -65,6 +69,24 @@ export default async function Dashboard() {
           />
         </div>
         <Progress collected={month.collected} pending={month.pending} />
+
+        {(month.free.UYU > 0 || month.free.USD > 0) && (
+          <p className="mt-2 text-xs text-muted">
+            No se cobra {formatTotals(month.free).join(" + ")} este mes por primer mes gratis.
+            Por eso el total de arriba no llega al MRR.
+          </p>
+        )}
+
+        {setups.count > 0 && (
+          <div className="mt-3 flex items-baseline justify-between gap-2 border-t border-line pt-2.5">
+            <span className="text-xs font-semibold text-muted">
+              + {setups.count} {setups.count === 1 ? "pago inicial" : "pagos iniciales"} sin cobrar
+            </span>
+            <span className="text-sm font-extrabold tabular-nums text-warn">
+              {formatTotals(setups.totals).join(" + ")}
+            </span>
+          </div>
+        )}
       </section>
 
       {/* Atención hoy */}

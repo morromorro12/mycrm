@@ -1,7 +1,9 @@
 import { SubmitButton } from "@/components/ActionButton";
 import { ServicesFieldset } from "@/components/clients/ServicesFieldset";
+import { SetupFieldset } from "@/components/clients/SetupFieldset";
 import { BackLink, PageTitle } from "@/components/ui";
 import { createClient } from "@/lib/actions";
+import { todayISO } from "@/lib/dates";
 
 export default function NewClient() {
   return (
@@ -32,7 +34,9 @@ export default function NewClient() {
           </label>
         </div>
 
-        <ServicesFieldset />
+        <SetupFieldset />
+
+        <ServicesFieldset today={todayISO()} />
 
         <label>
           <span className="label">Notas de cuenta</span>

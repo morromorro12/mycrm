@@ -5,6 +5,8 @@ import { IconCheck } from "@/components/icons";
 import { BackLink, StatusChip, WhatsAppButton } from "@/components/ui";
 import {
   addService,
+  markSetupPaid,
+  saveSetup,
   deletePayment,
   deleteService,
   markClientPaid,
@@ -15,11 +17,11 @@ import {
   toggleService,
   updateService,
 } from "@/lib/actions";
-import { clientStatus, serviceStatus } from "@/lib/billing";
+import { clientStatus, isFreeMonth, serviceStatus, setupPayment, setupStatus } from "@/lib/billing";
 import { repo } from "@/lib/data";
 import { effectiveBillingDay, periodLabel, shortDate, todayISO } from "@/lib/dates";
 import { addMoney, formatMoney, formatTotals, ZERO } from "@/lib/money";
-import { KIND_LABEL, type ClientService, type ServiceKind } from "@/lib/types";
+import { KIND_LABEL, type ClientFull, type ClientService, type ServiceKind } from "@/lib/types";
 import { prettyPhone } from "@/lib/whatsapp";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +89,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
         <div className="mt-3 flex flex-wrap gap-2">
           <WhatsAppButton phone={client.phone} className="flex-1 md:flex-none" />
-          {status !== "pagado" && (
+          {(status === "pendiente" || status === "vencido") && (
             <ActionButton
               action={markClientPaid.bind(null, client.id)}
               className="btn btn-primary flex-1 md:flex-none"
@@ -102,6 +104,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           </Link>
         </div>
       </header>
+
+      {/* ── Pago inicial ── */}
+      <SetupSection client={client} today={today} />
 
       {/* ── Servicios ── */}
       <section className="card mb-3 p-4">
@@ -149,6 +154,14 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                 <option value="USD">US$ (dólares)</option>
               </select>
             </label>
+            <label className="col-span-2">
+              <span className="label">Arranca el</span>
+              <input name="starts_on" type="date" defaultValue={today} className="field" />
+            </label>
+            <label className="col-span-2 flex items-center gap-2 text-sm">
+              <input type="checkbox" name="first_month_free" className="h-4 w-4" />
+              Primer mes gratis
+            </label>
             <div className="col-span-2">
               <SubmitButton className="btn btn-primary w-full">Agregar</SubmitButton>
             </div>
@@ -178,6 +191,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     <p className="truncate text-xs text-muted">
                       {rows
                         .map((p) => {
+                          if (p.kind === "inicial") return `Pago inicial · ${shortDate(p.paid_at)}`;
                           const svc = client.services.find((s) => s.id === p.service_id);
                           return `${svc ? KIND_LABEL[svc.kind] : "Pago"} · ${shortDate(p.paid_at)}`;
                         })
@@ -241,6 +255,108 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   );
 }
 
+/**
+ * Pago inicial: el cobro de arranque del proyecto. Uno por cliente y por única
+ * vez, así que no entra en el MRR — pero es casi siempre el importe más grande.
+ */
+function SetupSection({ client, today }: { client: ClientFull; today: string }) {
+  const status = setupStatus(client, today);
+  const paid = setupPayment(client);
+  const has = client.setup_amount != null && client.setup_amount > 0;
+
+  return (
+    <section className="card mb-3 p-4">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-muted">Pago inicial</h2>
+        {status && <StatusChip status={status} />}
+      </div>
+
+      {!has ? (
+        <p className="text-sm text-muted">
+          Sin pago inicial. Si a este cliente le cobrás un monto de arranque —el
+          armado del sitio, el setup de las campañas— cargalo acá.
+        </p>
+      ) : (
+        <>
+          <p className="text-2xl font-extrabold tabular-nums">
+            {formatMoney(client.setup_amount!, client.setup_currency)}
+          </p>
+          <p className="text-xs text-muted">
+            {paid
+              ? `Cobrado el ${shortDate(paid.paid_at)}`
+              : client.setup_due_on
+                ? `Para el ${shortDate(client.setup_due_on)}`
+                : "Sin fecha acordada"}
+            {client.setup_note ? ` · ${client.setup_note}` : ""}
+          </p>
+          {!paid && (
+            <ActionButton
+              action={markSetupPaid.bind(null, client.id)}
+              className="btn btn-primary mt-2.5 w-full md:w-auto"
+              pendingLabel="Marcando…"
+            >
+              <IconCheck className="h-4 w-4" />
+              Cobré el pago inicial
+            </ActionButton>
+          )}
+        </>
+      )}
+
+      <details className="mt-3">
+        <summary className="cursor-pointer text-sm font-semibold text-brand">
+          {has ? "Editar pago inicial" : "+ Cargar pago inicial"}
+        </summary>
+        <form action={saveSetup.bind(null, client.id)} className="mt-2 grid grid-cols-2 gap-2">
+          <label>
+            <span className="label">Monto</span>
+            <input
+              name="setup_amount"
+              type="number"
+              min={0}
+              step="1"
+              inputMode="numeric"
+              defaultValue={client.setup_amount ?? ""}
+              placeholder="28000"
+              className="field"
+            />
+          </label>
+          <label>
+            <span className="label">Moneda</span>
+            <select name="setup_currency" defaultValue={client.setup_currency} className="field">
+              <option value="UYU">$U (pesos)</option>
+              <option value="USD">US$ (dólares)</option>
+            </select>
+          </label>
+          <label className="col-span-2">
+            <span className="label">¿Para cuándo? (opcional)</span>
+            <input
+              name="setup_due_on"
+              type="date"
+              defaultValue={client.setup_due_on ?? ""}
+              className="field"
+            />
+          </label>
+          <label className="col-span-2">
+            <span className="label">Qué incluye (opcional)</span>
+            <input
+              name="setup_note"
+              defaultValue={client.setup_note ?? ""}
+              placeholder="Armado del sitio + integración a WhatsApp"
+              className="field"
+            />
+          </label>
+          <div className="col-span-2">
+            <SubmitButton className="btn btn-primary w-full">Guardar</SubmitButton>
+          </div>
+        </form>
+        <p className="mt-1.5 text-xs text-muted">
+          Monto en 0 o vacío quita el pago inicial. No entra en el MRR: no se repite.
+        </p>
+      </details>
+    </section>
+  );
+}
+
 function ServiceRow({
   service: s,
   clientId,
@@ -264,11 +380,19 @@ function ServiceRow({
             <span className="text-muted">· día {due}</span>
             {!s.active && <span className="ml-1 text-xs text-muted">(pausado)</span>}
           </p>
+          {s.first_month_free && (
+            <p className="text-xs font-semibold text-brand">
+              {isFreeMonth(s, today)
+                ? "Primer mes gratis — este mes no se cobra"
+                : `Tuvo el primer mes gratis (${shortDate(s.starts_on)})`}
+            </p>
+          )}
           <p className="text-lg font-extrabold tabular-nums">{formatMoney(s.amount, s.currency)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           {s.active && <StatusChip status={status} />}
-          {s.active && status !== "pagado" && (
+          {/* `gratis` no lleva botón: ese mes no hay nada que cobrar. */}
+          {s.active && (status === "pendiente" || status === "vencido") && (
             <ActionButton
               action={markServicePaid.bind(null, clientId, s.id)}
               className="btn btn-primary !min-h-[2rem] !px-2.5 !text-xs"
@@ -312,6 +436,24 @@ function ServiceRow({
             <option value="UYU">$U</option>
             <option value="USD">US$</option>
           </select>
+          <label className="col-span-2">
+            <span className="label">Arrancó el</span>
+            <input
+              name="starts_on"
+              type="date"
+              defaultValue={s.starts_on}
+              className="field !min-h-[2.3rem] !text-sm"
+            />
+          </label>
+          <label className="col-span-2 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              name="first_month_free"
+              defaultChecked={s.first_month_free}
+              className="h-4 w-4"
+            />
+            Primer mes gratis
+          </label>
           <SubmitButton className="btn btn-primary !min-h-[2.2rem] !text-sm">Guardar</SubmitButton>
         </form>
         <div className="mt-2 flex gap-2">
