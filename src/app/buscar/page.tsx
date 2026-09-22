@@ -65,7 +65,11 @@ export default async function SearchPage({
                             "sin servicios"}
                         </p>
                       </Link>
-                      <StatusChip status={clientStatus(c, today)} />
+                      {c.active ? (
+                        <StatusChip status={clientStatus(c, today)} />
+                      ) : (
+                        <span className="chip bg-bg text-muted">Pausado</span>
+                      )}
                       <WhatsAppButton phone={c.phone} compact />
                     </li>
                   );

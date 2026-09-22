@@ -22,11 +22,15 @@ export default async function Dashboard() {
     (p) => p.stage !== "ganado" && p.stage !== "perdido",
   ).length;
 
+  const activos = clients.filter((c) => c.active).length;
+
   return (
     <>
       <PageTitle
         title="Hoy"
-        subtitle={`${periodLabel(currentPeriod())} · ${clients.filter((c) => c.active).length} clientes activos`}
+        subtitle={`${periodLabel(currentPeriod())} · ${activos} ${
+          activos === 1 ? "cliente activo" : "clientes activos"
+        }`}
       />
 
       {/* MRR — el número grande */}

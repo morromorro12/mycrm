@@ -23,16 +23,20 @@ export function ClientsView({ clients, today }: { clients: ClientFull[]; today: 
   const rows = useMemo(() => {
     const term = q.trim().toLowerCase();
     return clients
-      .map((c) => ({ client: c, status: clientStatus(c, today) }))
+      // Un cliente pausado no tiene estado de pago: `status` va en null.
+      // Si no, la tabla lo mostraría en rojo mientras el dashboard lo ignora.
+      .map((c) => ({ client: c, status: c.active ? clientStatus(c, today) : null }))
       .filter(({ client, status }) => {
         if (term && !client.business_name.toLowerCase().includes(term)) return false;
-        if (onlyDue && status === "pagado") return false;
+        if (onlyDue && status !== "vencido" && status !== "pendiente") return false;
         return true;
       })
       .sort((a, b) => {
-        const rank: Record<PaymentStatus, number> = { vencido: 0, pendiente: 1, pagado: 2 };
+        // Pausados últimos; entre los activos, primero lo que hay que cobrar.
+        const rank = (s: PaymentStatus | null) =>
+          s === null ? 3 : { vencido: 0, pendiente: 1, pagado: 2 }[s];
         return (
-          rank[a.status] - rank[b.status] ||
+          rank(a.status) - rank(b.status) ||
           a.client.business_name.localeCompare(b.client.business_name, "es")
         );
       });
@@ -117,11 +121,20 @@ function billingDays(client: ClientFull, today: string) {
   return days.length ? `día ${days.join(" y ")}` : "—";
 }
 
-const STRIPE: Record<PaymentStatus, string> = {
+const STRIPE: Record<PaymentStatus | "pausado", string> = {
   pagado: "border-l-ok",
   pendiente: "border-l-warn",
   vencido: "border-l-bad",
+  pausado: "border-l-line",
 };
+
+const stripe = (s: PaymentStatus | null) => STRIPE[s ?? "pausado"];
+
+/** Chip de estado, o la marca de pausado cuando el cliente no está activo. */
+function RowStatus({ status }: { status: PaymentStatus | null }) {
+  if (status === null) return <span className="chip bg-bg text-muted">Pausado</span>;
+  return <StatusChip status={status} />;
+}
 
 function Card({
   client,
@@ -129,11 +142,11 @@ function Card({
   today,
 }: {
   client: ClientFull;
-  status: PaymentStatus;
+  status: PaymentStatus | null;
   today: string;
 }) {
   return (
-    <div className={`card border-l-4 p-3 ${STRIPE[status]}`}>
+    <div className={`card border-l-4 p-3 ${stripe(status)} ${status === null ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <Link href={`/clientes/${client.id}`} className="min-w-0 flex-1">
           <p className="truncate font-bold leading-tight">{client.business_name}</p>
@@ -143,7 +156,7 @@ function Card({
             · {billingDays(client, today)}
           </p>
         </Link>
-        <StatusChip status={status} />
+        <RowStatus status={status} />
       </div>
 
       <div className="mt-2 flex items-end justify-between gap-2">
@@ -156,7 +169,7 @@ function Card({
         </div>
         <div className="flex gap-2">
           <WhatsAppButton phone={client.phone} compact />
-          {status !== "pagado" && <PayButton client={client} />}
+          {status !== null && status !== "pagado" && <PayButton client={client} />}
         </div>
       </div>
     </div>
@@ -169,12 +182,16 @@ function Row({
   today,
 }: {
   client: ClientFull;
-  status: PaymentStatus;
+  status: PaymentStatus | null;
   today: string;
 }) {
   const active = client.services.filter((s) => s.active);
   return (
-    <tr className={`border-t border-line border-l-4 bg-surface ${STRIPE[status]}`}>
+    <tr
+      className={`border-t border-line border-l-4 bg-surface ${stripe(status)} ${
+        status === null ? "opacity-60" : ""
+      }`}
+    >
       <td className="px-3 py-2">
         <Link href={`/clientes/${client.id}`} className="font-semibold hover:underline">
           {client.business_name}
@@ -204,12 +221,12 @@ function Row({
       </td>
       <td className="whitespace-nowrap px-3 py-2 text-xs text-muted">{billingDays(client, today)}</td>
       <td className="px-3 py-2">
-        <StatusChip status={status} />
+        <RowStatus status={status} />
       </td>
       <td className="px-3 py-2">
         <div className="flex justify-end gap-2">
           <WhatsAppButton phone={client.phone} compact />
-          {status !== "pagado" && <PayButton client={client} />}
+          {status !== null && status !== "pagado" && <PayButton client={client} />}
         </div>
       </td>
     </tr>
