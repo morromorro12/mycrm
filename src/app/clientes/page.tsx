@@ -26,6 +26,12 @@ export default async function ClientsPage() {
         }
       />
       <ClientsView clients={clients} today={today} />
+
+      <p className="mt-6 text-center text-xs text-muted">
+        <Link href="/archivados" className="font-semibold hover:text-ink hover:underline">
+          Ver archivados
+        </Link>
+      </p>
     </>
   );
 }

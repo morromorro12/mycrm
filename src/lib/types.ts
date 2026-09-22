@@ -27,6 +27,8 @@ export interface Prospect {
   next_action_at: string | null; // YYYY-MM-DD
   notes: string | null;
   converted_client_id: string | null;
+  /** Archivado: sale de todas las listas, pero no se borra nada. */
+  archived: boolean;
 }
 
 export interface ClientService {
@@ -56,7 +58,10 @@ export interface Client {
   contact_name: string | null;
   phone: string | null;
   notes: string | null;
+  /** false = pausado: sigue siendo cliente, pero no cuenta para MRR ni cobros. */
   active: boolean;
+  /** Archivado: sale de todas las listas, pero no se borra nada. */
+  archived: boolean;
 }
 
 /** Cliente con sus servicios y pagos ya resueltos. Lo que consumen las vistas. */

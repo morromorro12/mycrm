@@ -9,6 +9,7 @@ import {
   deleteService,
   markClientPaid,
   markServicePaid,
+  restoreClient,
   saveClientNotes,
   setClientActive,
   toggleService,
@@ -45,7 +46,24 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <BackLink href="/clientes">Clientes</BackLink>
+      <BackLink href={client.archived ? "/archivados" : "/clientes"}>
+        {client.archived ? "Archivados" : "Clientes"}
+      </BackLink>
+
+      {client.archived && (
+        <div className="card mb-3 flex flex-wrap items-center justify-between gap-2 border-warn/40 bg-warn-bg p-3">
+          <p className="text-sm font-semibold text-warn">
+            Archivado. No cuenta para el MRR ni aparece en las listas.
+          </p>
+          <ActionButton
+            action={restoreClient.bind(null, client.id)}
+            className="btn btn-primary !min-h-[2.2rem] !text-sm"
+            pendingLabel="…"
+          >
+            Restaurar
+          </ActionButton>
+        </div>
+      )}
 
       <header className="card mb-3 p-4">
         <div className="flex items-start justify-between gap-3">

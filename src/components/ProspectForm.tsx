@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { deleteProspect, saveProspect } from "@/lib/actions";
+import { archiveProspect, saveProspect } from "@/lib/actions";
 import { todayISO } from "@/lib/dates";
 import {
   INTEREST_LABEL,
@@ -151,11 +151,11 @@ export function ProspectForm({ prospect }: { prospect?: Prospect }) {
       {p && (
         <div className="mt-4 flex justify-end">
           <ActionButton
-            action={deleteProspect.bind(null, p.id)}
-            className="btn !text-sm text-bad"
-            confirm={`¿Borrar "${p.business_name}"? No se puede deshacer.`}
+            action={archiveProspect.bind(null, p.id)}
+            className="btn !text-sm text-muted"
+            confirm={`¿Archivar "${p.business_name}"? Sale del pipeline, pero lo podés restaurar desde Archivados.`}
           >
-            Borrar prospecto
+            Archivar prospecto
           </ActionButton>
         </div>
       )}

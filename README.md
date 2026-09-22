@@ -58,6 +58,7 @@ variables. Nada más.
 | **Pipeline** | Kanban de prospectos. Arrastrá las tarjetas, o cambiá la etapa con el menú de cada una |
 | **Clientes** | Tabla con semáforo de pago y botón de un toque para marcar cobrado |
 | **Anuncios** | Mockup. Todavía no hay conexión con Meta |
+| **Archivados** | Papelera: restaurar lo archivado, o borrarlo de verdad |
 
 Atajos pensados para usarlo entre reunión y reunión:
 
@@ -86,6 +87,20 @@ tareas programadas ni nada que se pueda olvidar de correr. El historial no se
 toca nunca.
 
 Detalle: si un servicio cobra el 31 y el mes tiene 30 días, vence el 30.
+
+### Nada se borra de un toque
+
+El botón de las fichas dice **Archivar**, no borrar: el cliente o prospecto sale
+de las listas, del MRR y de las búsquedas, pero conserva todo — servicios,
+historial de pagos, notas — y se restaura en un toque desde **Archivados**
+(link al pie de Clientes y de Pipeline).
+
+El borrado definitivo existe, pero vive sólo dentro de Archivados y pide una
+confirmación aparte que dice cuántos pagos se van a perder. Son dos pasos
+deliberados: un dedazo no te borra un año de historial.
+
+No confundir con **Pausar cliente**, que es otra cosa: el cliente sigue en la
+lista pero no le cobrás este mes (temporada baja, por ejemplo).
 
 ### Las monedas no se mezclan
 

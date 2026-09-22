@@ -35,6 +35,7 @@ export function seedProspects(): Prospect[] {
       next_action_at: shift(-2),
       notes: "Le interesa el sistema de pedidos por WhatsApp. Tiene 2 locales.",
       converted_client_id: null,
+      archived: false,
     },
     {
       id: "p2",
@@ -49,6 +50,7 @@ export function seedProspects(): Prospect[] {
       next_action_at: todayISO(),
       notes: "Pasé por el local. Quiere ver la demo funcionando en el celular.",
       converted_client_id: null,
+      archived: false,
     },
     {
       id: "p3",
@@ -63,6 +65,7 @@ export function seedProspects(): Prospect[] {
       next_action_at: shift(1),
       notes: "Le pareció caro el primer número. Negociando el retainer.",
       converted_client_id: null,
+      archived: false,
     },
     {
       id: "p4",
@@ -77,6 +80,7 @@ export function seedProspects(): Prospect[] {
       next_action_at: shift(-1),
       notes: "Contactada por Instagram. Respondió que le mande info.",
       converted_client_id: null,
+      archived: false,
     },
     {
       id: "p5",
@@ -91,6 +95,7 @@ export function seedProspects(): Prospect[] {
       next_action_at: shift(3),
       notes: "Referido por El Fogón.",
       converted_client_id: null,
+      archived: false,
     },
     {
       id: "p6",
@@ -105,6 +110,7 @@ export function seedProspects(): Prospect[] {
       next_action_at: null,
       notes: "Cerró por temporada. Reintentar en primavera.",
       converted_client_id: null,
+      archived: false,
     },
   ];
 }
@@ -136,6 +142,7 @@ export function seedClients(): ClientFull[] {
       phone: "099 745 220",
       notes: "Cobra siempre puntual. Pide cambios de menú una vez por mes.",
       active: true,
+      archived: false,
       services: [
         { id: "s1", client_id: "c1", kind: "retainer", amount: 6500, currency: "UYU", billing_day: 5, active: true },
         { id: "s2", client_id: "c1", kind: "ads", amount: 250, currency: "USD", billing_day: 5, active: true },
@@ -155,6 +162,7 @@ export function seedClients(): ClientFull[] {
       phone: "094 112 668",
       notes: "Prefiere que le escriba de mañana. Paga por transferencia.",
       active: true,
+      archived: false,
       services: [
         { id: "s3", client_id: "c2", kind: "web", amount: 4200, currency: "UYU", billing_day: 1, active: true },
       ],
@@ -167,6 +175,7 @@ export function seedClients(): ClientFull[] {
       phone: "091 903 337",
       notes: "Escala el presupuesto de ads en fin de semana largo.",
       active: true,
+      archived: false,
       services: [
         { id: "s4", client_id: "c3", kind: "retainer", amount: 5000, currency: "UYU", billing_day: 10, active: true },
         { id: "s5", client_id: "c3", kind: "ads", amount: 400, currency: "USD", billing_day: 10, active: true },
@@ -180,6 +189,7 @@ export function seedClients(): ClientFull[] {
       phone: "098 220 914",
       notes: "Temporada alta en verano. Pidió pausar ads en julio.",
       active: true,
+      archived: false,
       services: [
         { id: "s6", client_id: "c4", kind: "web", amount: 3800, currency: "UYU", billing_day: 20, active: true },
       ],
@@ -192,6 +202,7 @@ export function seedClients(): ClientFull[] {
       phone: "099 667 013",
       notes: "Cliente desde el año pasado. Muy conforme.",
       active: true,
+      archived: false,
       services: [
         { id: "s7", client_id: "c5", kind: "retainer", amount: 3500, currency: "UYU", billing_day: 28, active: true },
       ],

@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { ActionButton, SubmitButton } from "@/components/ActionButton";
 import { BackLink, PageTitle } from "@/components/ui";
-import { deleteClient, updateClient } from "@/lib/actions";
+import { archiveClient, updateClient } from "@/lib/actions";
 import { repo } from "@/lib/data";
 
 export const dynamic = "force-dynamic";
@@ -40,11 +40,11 @@ export default async function EditClient({ params }: { params: Promise<{ id: str
 
       <div className="mt-6 flex justify-end">
         <ActionButton
-          action={deleteClient.bind(null, c.id)}
-          className="btn !text-sm text-bad"
-          confirm={`¿Borrar "${c.business_name}"? Se borra también su historial de pagos. No se puede deshacer.`}
+          action={archiveClient.bind(null, c.id)}
+          className="btn !text-sm text-muted"
+          confirm={`¿Archivar "${c.business_name}"? Sale del MRR y de las listas, pero conserva su historial y lo podés restaurar desde Archivados.`}
         >
-          Borrar cliente
+          Archivar cliente
         </ActionButton>
       </div>
     </div>

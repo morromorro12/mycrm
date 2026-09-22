@@ -1,0 +1,28 @@
+#!/bin/sh
+# Frena el commit si se está por subir un archivo de entorno o una clave.
+# El repo es público: un descuido acá queda expuesto para siempre.
+#
+# Se activa con:  git config core.hooksPath .githooks
+# Para saltearlo una vez (sabiendo lo que hacés):  git commit --no-verify
+
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+
+# 1) Archivos .env — salvo las plantillas .example, que van a propósito.
+bad=$(printf '%s\n' "$staged" | grep -E '(^|/)\.env' | grep -v '\.example$')
+if [ -n "$bad" ]; then
+  echo "✋ Commit frenado: archivo de entorno en el commit"
+  printf '   %s\n' $bad
+  echo "   Agregalo a .gitignore, o usá --no-verify si estás seguro."
+  exit 1
+fi
+
+# 2) Claves dentro del contenido, venga del archivo que venga.
+leak=$(git diff --cached -U0 | grep -nE 'sb_secret_[A-Za-z0-9_]{8}|sb_publishable_[A-Za-z0-9_]{8}|eyJhbGciOi[A-Za-z0-9_-]{20}|EAA[A-Za-z0-9]{40}')
+if [ -n "$leak" ]; then
+  echo "✋ Commit frenado: parece haber una clave en el contenido"
+  printf '%s\n' "$leak" | head -5 | sed 's/^/   /'
+  echo "   Movela a .env.local (que está ignorado) y volvé a intentar."
+  exit 1
+fi
+
+exit 0

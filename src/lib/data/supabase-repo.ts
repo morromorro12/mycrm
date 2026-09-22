@@ -29,6 +29,7 @@ export const supabaseRepo: Repo = {
     const r = await db()
       .from("prospects")
       .select("*")
+      .eq("archived", false)
       .order("next_action_at", { ascending: true, nullsFirst: false })
       .order("business_name");
     return check(r, "listar prospectos") as Prospect[];
@@ -52,6 +53,25 @@ export const supabaseRepo: Repo = {
     check(await db().from("prospects").update({ stage }).eq("id", id), "mover prospecto");
   },
 
+  async setProspectArchived(id, archived) {
+    check(await db().from("prospects").update({ archived }).eq("id", id), "archivar prospecto");
+  },
+
+  async listArchived() {
+    const [p, c] = await Promise.all([
+      db().from("prospects").select("*").eq("archived", true).order("business_name"),
+      db()
+        .from("clients")
+        .select("*, services:client_services(*), payments(*)")
+        .eq("archived", true)
+        .order("business_name"),
+    ]);
+    return {
+      prospects: (check(p, "listar prospectos archivados") ?? []) as Prospect[],
+      clients: (check(c, "listar clientes archivados") ?? []) as ClientFull[],
+    };
+  },
+
   async deleteProspect(id) {
     check(await db().from("prospects").delete().eq("id", id), "borrar prospecto");
   },
@@ -71,6 +91,7 @@ export const supabaseRepo: Repo = {
     const r = await db()
       .from("clients")
       .select("*, services:client_services(*), payments(*)")
+      .eq("archived", false)
       .order("business_name");
     return (check(r, "listar clientes") ?? []) as ClientFull[];
   },
@@ -102,6 +123,10 @@ export const supabaseRepo: Repo = {
 
   async updateClient(id, patch) {
     check(await db().from("clients").update(patch).eq("id", id), "actualizar cliente");
+  },
+
+  async setClientArchived(id, archived) {
+    check(await db().from("clients").update({ archived }).eq("id", id), "archivar cliente");
   },
 
   async deleteClient(id) {

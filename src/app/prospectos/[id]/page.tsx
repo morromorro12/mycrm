@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ActionButton } from "@/components/ActionButton";
 import { ProspectForm } from "@/components/ProspectForm";
 import { BackLink, PageTitle, WhatsAppButton } from "@/components/ui";
+import { restoreProspect } from "@/lib/actions";
 import { repo } from "@/lib/data";
 import { shortDate } from "@/lib/dates";
 import { STAGE_LABEL } from "@/lib/types";
@@ -16,7 +18,23 @@ export default async function ProspectDetail({ params }: { params: Promise<{ id:
 
   return (
     <div className="mx-auto max-w-lg">
-      <BackLink href="/pipeline">Pipeline</BackLink>
+      <BackLink href={p.archived ? "/archivados" : "/pipeline"}>
+        {p.archived ? "Archivados" : "Pipeline"}
+      </BackLink>
+
+      {p.archived && (
+        <div className="card mb-3 flex flex-wrap items-center justify-between gap-2 border-warn/40 bg-warn-bg p-3">
+          <p className="text-sm font-semibold text-warn">Archivado. No aparece en el pipeline.</p>
+          <ActionButton
+            action={restoreProspect.bind(null, p.id)}
+            className="btn btn-primary !min-h-[2.2rem] !text-sm"
+            pendingLabel="…"
+          >
+            Restaurar
+          </ActionButton>
+        </div>
+      )}
+
       <PageTitle
         title={p.business_name}
         subtitle={`${STAGE_LABEL[p.stage]}${p.last_contact_at ? ` · último contacto ${shortDate(p.last_contact_at)}` : ""}`}

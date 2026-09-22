@@ -72,10 +72,26 @@ export async function snoozeProspect(id: string, days: number) {
   refresh();
 }
 
+/**
+ * Archivar es la acción normal: el prospecto sale del pipeline y de las
+ * búsquedas, pero no se pierde nada y se puede restaurar desde /archivados.
+ */
+export async function archiveProspect(id: string) {
+  await repo().setProspectArchived(id, true);
+  refresh();
+  redirect("/pipeline");
+}
+
+export async function restoreProspect(id: string) {
+  await repo().setProspectArchived(id, false);
+  refresh();
+}
+
+/** Borrado definitivo. Sólo se llega desde el archivo, y no tiene vuelta. */
 export async function deleteProspect(id: string) {
   await repo().deleteProspect(id);
   refresh();
-  redirect("/pipeline");
+  redirect("/archivados");
 }
 
 /**
@@ -161,10 +177,29 @@ export async function setClientActive(id: string, active: boolean) {
   refresh();
 }
 
+/**
+ * Archivar es la acción normal: el cliente sale de las listas y del MRR, pero
+ * conserva servicios e historial de pagos y se puede restaurar.
+ */
+export async function archiveClient(id: string) {
+  await repo().setClientArchived(id, true);
+  refresh();
+  redirect("/clientes");
+}
+
+export async function restoreClient(id: string) {
+  await repo().setClientArchived(id, false);
+  refresh();
+}
+
+/**
+ * Borrado definitivo: arrastra servicios e historial de pagos.
+ * Sólo se llega desde el archivo, y no tiene vuelta atrás.
+ */
 export async function deleteClient(id: string) {
   await repo().deleteClient(id);
   refresh();
-  redirect("/clientes");
+  redirect("/archivados");
 }
 
 // ── Servicios ───────────────────────────────────────────────────────────────

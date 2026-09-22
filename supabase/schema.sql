@@ -35,7 +35,8 @@ create table if not exists clients (
   contact_name  text,
   phone         text,                       -- como lo escribís vos; se normaliza para wa.me
   notes         text,                       -- notas de cuenta
-  active        boolean     not null default true,
+  active        boolean     not null default true,  -- false = pausado (sigue siendo cliente)
+  archived      boolean     not null default false, -- true = archivado (fuera de las listas)
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
@@ -95,12 +96,24 @@ create table if not exists prospects (
   next_action_at      date,             -- cuándo. Esto alimenta "Atención hoy".
   notes               text,
   converted_client_id uuid             references clients(id) on delete set null,
+  archived            boolean          not null default false,
   created_at          timestamptz      not null default now(),
   updated_at          timestamptz      not null default now()
 );
 create index if not exists prospects_stage_idx      on prospects (stage);
 create index if not exists prospects_next_action_idx on prospects (next_action_at)
   where next_action_at is not null;
+
+-- ── Migración ───────────────────────────────────────────────────────────────
+-- Si creaste las tablas con una versión anterior de este archivo, esto agrega
+-- la columna `archived` sin tocar tus datos. Si ya la tenés, no hace nada.
+alter table clients   add column if not exists archived boolean not null default false;
+alter table prospects add column if not exists archived boolean not null default false;
+
+-- Índices parciales: las listas del día a día filtran por archived = false,
+-- y el archivo se consulta de vez en cuando.
+create index if not exists clients_archived_idx   on clients (archived)   where archived;
+create index if not exists prospects_archived_idx on prospects (archived) where archived;
 
 -- ── updated_at automático ───────────────────────────────────────────────────
 create or replace function touch_updated_at() returns trigger

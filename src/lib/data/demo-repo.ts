@@ -31,7 +31,7 @@ export const demoRepo: Repo = {
   mode: "demo",
 
   async listProspects() {
-    return clone(store().prospects);
+    return clone(store().prospects.filter((p) => !p.archived));
   },
 
   async getProspect(pid) {
@@ -39,7 +39,7 @@ export const demoRepo: Repo = {
   },
 
   async createProspect(input: ProspectInput) {
-    const p: Prospect = { ...input, id: id(), converted_client_id: null };
+    const p: Prospect = { ...input, id: id(), converted_client_id: null, archived: false };
     store().prospects.unshift(p);
     return clone(p);
   },
@@ -54,6 +54,18 @@ export const demoRepo: Repo = {
     if (p) p.stage = stage;
   },
 
+  async setProspectArchived(pid, archived) {
+    const p = store().prospects.find((x) => x.id === pid);
+    if (p) p.archived = archived;
+  },
+
+  async listArchived() {
+    return clone({
+      prospects: store().prospects.filter((p) => p.archived),
+      clients: store().clients.filter((c) => c.archived),
+    });
+  },
+
   async deleteProspect(pid) {
     store().prospects = store().prospects.filter((p) => p.id !== pid);
   },
@@ -65,7 +77,9 @@ export const demoRepo: Repo = {
 
   async listClients() {
     return clone(
-      [...store().clients].sort((a, b) => a.business_name.localeCompare(b.business_name, "es")),
+      store()
+        .clients.filter((c) => !c.archived)
+        .sort((a, b) => a.business_name.localeCompare(b.business_name, "es")),
     );
   },
 
@@ -79,6 +93,7 @@ export const demoRepo: Repo = {
       ...input,
       id: cid,
       active: true,
+      archived: false,
       services: services.map((s) => ({ ...s, id: id(), client_id: cid })),
       payments: [],
     };
@@ -90,6 +105,11 @@ export const demoRepo: Repo = {
   async updateClient(cid, patch) {
     const c = store().clients.find((x) => x.id === cid);
     if (c) Object.assign(c, patch);
+  },
+
+  async setClientArchived(cid, archived) {
+    const c = store().clients.find((x) => x.id === cid);
+    if (c) c.archived = archived;
   },
 
   async deleteClient(cid) {

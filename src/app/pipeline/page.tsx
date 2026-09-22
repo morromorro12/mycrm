@@ -40,7 +40,10 @@ export default async function PipelinePage() {
         <>
           <PipelineBoard prospects={prospects} />
           <p className="mt-2 text-center text-xs text-muted md:text-left">
-            Arrastrá las tarjetas entre columnas, o cambiá la etapa desde el menú de cada una.
+            Arrastrá las tarjetas entre columnas, o cambiá la etapa desde el menú de cada una.{" "}
+            <Link href="/archivados" className="font-semibold hover:text-ink hover:underline">
+              Ver archivados
+            </Link>
           </p>
         </>
       )}
