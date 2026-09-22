@@ -71,7 +71,15 @@ export default async function ArchivedPage() {
                         <ActionButton
                           action={deleteClient.bind(null, c.id)}
                           className="btn !min-h-[2.2rem] !text-sm text-bad"
-                          confirm={`Borrar "${c.business_name}" para siempre, junto con sus ${c.payments.length} pagos del historial.\n\nEsto NO se puede deshacer. ¿Seguro?`}
+                          confirm={
+                            c.payments.length === 0
+                              ? `Borrar "${c.business_name}" para siempre.\n\nEsto NO se puede deshacer. ¿Seguro?`
+                              : `Borrar "${c.business_name}" para siempre, junto con ${
+                                  c.payments.length === 1
+                                    ? "su único pago"
+                                    : `sus ${c.payments.length} pagos`
+                                } del historial.\n\nEsto NO se puede deshacer. ¿Seguro?`
+                          }
                           pendingLabel="…"
                         >
                           Borrar definitivamente
