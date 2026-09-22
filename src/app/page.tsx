@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { AttentionList } from "@/components/AttentionList";
 import { PageTitle } from "@/components/ui";
-import { attentionItems, monthSummary, mrr, pendingSetups } from "@/lib/billing";
+import {
+  attentionItems,
+  collectedSetups,
+  monthSummary,
+  mrr,
+  pendingSetups,
+} from "@/lib/billing";
 import { repo } from "@/lib/data";
 import { currentPeriod, periodLabel, todayISO } from "@/lib/dates";
 import { formatMoney, formatTotals, type MoneyByCurrency } from "@/lib/money";
@@ -18,6 +24,7 @@ export default async function Dashboard() {
   const month = monthSummary(clients, today);
   const items = attentionItems(prospects, clients, today);
   const setups = pendingSetups(clients, today);
+  const setupsIn = collectedSetups(clients, today);
 
   const openPipeline = prospects.filter(
     (p) => p.stage !== "ganado" && p.stage !== "perdido",
@@ -56,7 +63,11 @@ export default async function Dashboard() {
           Este mes
         </h2>
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Cobrado" tone="ok" totals={month.collected} />
+          <Stat
+            label={setupsIn.count > 0 ? "Cobrado (mensual)" : "Cobrado"}
+            tone="ok"
+            totals={month.collected}
+          />
           <Stat
             label="Falta cobrar"
             tone={month.overdueClients > 0 ? "bad" : "warn"}
@@ -75,6 +86,18 @@ export default async function Dashboard() {
             No se cobra {formatTotals(month.free).join(" + ")} este mes por primer mes gratis.
             Por eso el total de arriba no llega al MRR.
           </p>
+        )}
+
+        {setupsIn.count > 0 && (
+          <div className="mt-3 flex items-baseline justify-between gap-2 border-t border-line pt-2.5">
+            <span className="text-xs font-semibold text-muted">
+              + {setupsIn.count} {setupsIn.count === 1 ? "pago inicial" : "pagos iniciales"} cobrado
+              {setupsIn.count === 1 ? "" : "s"} este mes
+            </span>
+            <span className="text-sm font-extrabold tabular-nums text-ok">
+              {formatTotals(setupsIn.totals).join(" + ")}
+            </span>
+          </div>
         )}
 
         {setups.count > 0 && (

@@ -110,6 +110,24 @@ export function setupStatus(
   return "pendiente";
 }
 
+/** Pagos iniciales que entraron este mes. No son MRR, pero son plata que entró. */
+export function collectedSetups(
+  clients: ClientFull[],
+  today = todayISO(),
+): { totals: MoneyByCurrency; count: number } {
+  const period = periodOf(today);
+  let totals = ZERO;
+  let count = 0;
+  for (const c of clients) {
+    const p = setupPayment(c);
+    if (p && periodOf(p.paid_at) === period) {
+      totals = addMoney(totals, p.currency, p.amount);
+      count++;
+    }
+  }
+  return { totals, count };
+}
+
 /** Total de pagos iniciales todavía sin cobrar, por moneda. */
 export function pendingSetups(
   clients: ClientFull[],
