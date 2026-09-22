@@ -17,9 +17,24 @@ function db(): SupabaseClient {
 }
 
 /** Cualquier error de PostgREST corta acá con un mensaje legible. */
-function check<T>(res: { data: T; error: { message: string } | null }, what: string): T {
-  if (res.error) throw new Error(`${what}: ${res.error.message}`);
-  return res.data;
+function check<T>(
+  res: { data: T; error: { message: string; code?: string } | null },
+  what: string,
+): T {
+  if (!res.error) return res.data;
+
+  // 42703 = la columna no existe. Pasa siempre por lo mismo: se actualizó el
+  // código pero falta correr la migración en Supabase. Vale la pena decirlo
+  // con todas las letras en vez de dejar el mensaje crudo de Postgres.
+  if (res.error.code === "42703") {
+    throw new Error(
+      `${what}: la base todavía no tiene una columna que el código espera ` +
+        `(${res.error.message}). Falta correr supabase/schema.sql en el ` +
+        `SQL Editor de Supabase: es idempotente y no toca los datos.`,
+    );
+  }
+
+  throw new Error(`${what}: ${res.error.message}`);
 }
 
 export const supabaseRepo: Repo = {
