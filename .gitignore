@@ -7,3 +7,6 @@ out
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+.env*
+# …pero la plantilla sí va al repo: documenta qué variables hacen falta.
+!.env*.example

@@ -45,8 +45,17 @@ cuanto conectes la base.
 
 ### Deploy en Vercel
 
-Importá el repo, y en **Settings → Environment Variables** cargá las mismas dos
-variables. Nada más.
+Ya está desplegado y conectado a este repo:
+
+**https://mycrm-alfonso-s-projects14.vercel.app**
+
+Cada `git push` a `main` dispara un deploy solo. Las variables de entorno están
+cargadas en los tres entornos (production, preview, development).
+
+La app está detrás de la **protección de deployments de Vercel**: para abrirla
+hay que estar logueado en la cuenta de Vercel dueña del proyecto. Se entra una
+vez por dispositivo. Se saca desde el panel, en
+**Project → Settings → Deployment Protection**.
 
 ---
 
@@ -112,8 +121,15 @@ lado del código.
 
 ## Seguridad
 
-La app está **abierta**: cualquiera con el link ve teléfonos y montos. Es lo que
-elegiste y así queda configurada.
+Hay tres capas posibles, hoy activa sólo la primera:
+
+1. **Protección de Vercel** (activa): la URL de producción pide login de Vercel.
+   Es lo único que separa los datos de internet.
+2. **Candado propio de la app** (apagado): poné `CRM_PASSWORD` en las variables
+   de entorno y la app pide esa clave, una vez por dispositivo, por un año.
+   Está en `src/proxy.ts`.
+3. **RLS de Supabase** (abierta a propósito): la anon key tiene acceso total a
+   las tablas, porque la app no tiene login de usuarios.
 
 Si algún día querés cerrarla, poné `CRM_PASSWORD` en las variables de entorno de
 Vercel. Con eso solo, la app pasa a pedir esa clave una vez por dispositivo y la
