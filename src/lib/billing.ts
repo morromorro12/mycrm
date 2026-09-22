@@ -219,13 +219,26 @@ export interface Ledger {
  * así que crece solo a medida que pasan los meses.
  */
 export function clientLedger(client: ClientFull): Ledger {
+  return ledgerOf(client.payments);
+}
+
+/**
+ * El acumulado de TODOS los clientes: cuánto llevás ganado desde que
+ * arrancaste. Incluye a los archivados a propósito — esa plata la cobraste
+ * igual, y no tiene por qué evaporarse del total al archivar una ficha.
+ */
+export function globalLedger(...groups: ClientFull[][]): Ledger {
+  return ledgerOf(groups.flat().flatMap((c) => c.payments));
+}
+
+function ledgerOf(payments: Payment[]): Ledger {
   let monthly = ZERO;
   let setup = ZERO;
   let total = ZERO;
   const months = new Set<string>();
   let since: string | null = null;
 
-  for (const p of client.payments) {
+  for (const p of payments) {
     total = addMoney(total, p.currency, p.amount);
     if (p.kind === "inicial") {
       setup = addMoney(setup, p.currency, p.amount);

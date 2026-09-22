@@ -4,6 +4,7 @@ import { PageTitle } from "@/components/ui";
 import {
   attentionItems,
   collectedSetups,
+  globalLedger,
   monthSummary,
   mrr,
   pendingSetups,
@@ -17,7 +18,11 @@ export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const r = repo();
-  const [prospects, clients] = await Promise.all([r.listProspects(), r.listClients()]);
+  const [prospects, clients, archived] = await Promise.all([
+    r.listProspects(),
+    r.listClients(),
+    r.listArchived(),
+  ]);
 
   const today = todayISO();
   const recurring = mrr(clients);
@@ -25,6 +30,7 @@ export default async function Dashboard() {
   const items = attentionItems(prospects, clients, today);
   const setups = pendingSetups(clients, today);
   const setupsIn = collectedSetups(clients, today);
+  const ledger = globalLedger(clients, archived.clients);
 
   const openPipeline = prospects.filter(
     (p) => p.stage !== "ganado" && p.stage !== "perdido",
@@ -55,6 +61,52 @@ export default async function Dashboard() {
           Suma de todos los servicios activos, por mes. Los pagos iniciales no cuentan:
           no se repiten.
         </p>
+      </section>
+
+      {/* Acumulado histórico */}
+      <section className="card mb-3 p-4">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-muted">Total cobrado</h2>
+        <div className="mt-1 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          {formatTotals(ledger.total).map((t) => (
+            <span key={t} className="text-2xl font-extrabold tabular-nums text-ok md:text-3xl">
+              {t}
+            </span>
+          ))}
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          {ledger.since ? (
+            <>
+              Todo lo que entró desde {periodLabel(ledger.since)}, de todos los clientes.
+            </>
+          ) : (
+            <>Todavía no registraste ningún cobro.</>
+          )}
+        </p>
+
+        {ledger.since && (
+          <div className="mt-2.5 grid grid-cols-2 gap-3 border-t border-line pt-2.5">
+            <div>
+              <p className="text-xs font-semibold text-muted">Mensualidades</p>
+              <div className="grid">
+                {formatTotals(ledger.monthly).map((t) => (
+                  <span key={t} className="font-bold tabular-nums">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-muted">Pagos iniciales</p>
+              <div className="grid">
+                {formatTotals(ledger.setup).map((t) => (
+                  <span key={t} className="font-bold tabular-nums">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Cobrado vs pendiente */}

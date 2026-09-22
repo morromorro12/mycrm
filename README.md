@@ -63,7 +63,7 @@ vez por dispositivo. Se saca desde el panel, en
 
 | Pantalla | Para qué |
 |---|---|
-| **Hoy** | MRR, cobrado vs pendiente del mes, y la lista de lo que necesita atención hoy |
+| **Hoy** | MRR, total cobrado histórico, cobrado vs pendiente del mes, y la lista de lo que necesita atención hoy |
 | **Pipeline** | Kanban de prospectos. Arrastrá las tarjetas, o cambiá la etapa con el menú de cada una |
 | **Clientes** | Tabla con semáforo de pago y botón de un toque para marcar cobrado |
 | **Anuncios** | Mockup. Todavía no hay conexión con Meta |
@@ -110,6 +110,15 @@ inicio no se cobra. Ese mes el servicio muestra "Mes gratis" en vez de
 pendiente/vencido, no cuenta como deuda y no lleva botón de cobro. El MRR sigue
 mostrando el monto contratado —el acuerdo vale eso— y el dashboard aclara abajo
 cuánto no se cobra este mes por promo, para que los números cierren a la vista.
+
+### Total cobrado
+
+El dashboard muestra, debajo del MRR, el acumulado de **todo** lo que entró
+desde que arrancaste: mensualidades y pagos iniciales, de todos los clientes.
+
+Incluye a los clientes archivados a propósito. Esa plata la cobraste igual, y
+el acumulado no tiene por qué bajar porque archives una ficha. Sólo baja si
+borrás un cliente de verdad, que se lleva su historial.
 
 ### Estado de cuenta
 
