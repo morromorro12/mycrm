@@ -17,7 +17,14 @@ import {
   toggleService,
   updateService,
 } from "@/lib/actions";
-import { clientStatus, isFreeMonth, serviceStatus, setupPayment, setupStatus } from "@/lib/billing";
+import {
+  clientLedger,
+  clientStatus,
+  isFreeMonth,
+  serviceStatus,
+  setupPayment,
+  setupStatus,
+} from "@/lib/billing";
 import { repo } from "@/lib/data";
 import { effectiveBillingDay, periodLabel, shortDate, todayISO } from "@/lib/dates";
 import { addMoney, formatMoney, formatTotals, ZERO } from "@/lib/money";
@@ -169,24 +176,33 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         </details>
       </section>
 
-      {/* ── Historial ── */}
+      {/* ── Estado de cuenta ── */}
       <section className="card mb-3 p-4">
-        <h2 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">
-          Historial de pagos
+        <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">
+          Estado de cuenta
         </h2>
+
         {byPeriod.size === 0 ? (
-          <p className="py-2 text-sm text-muted">Todavía no hay pagos registrados.</p>
+          <p className="py-2 text-sm text-muted">Todavía no cobraste nada de este cliente.</p>
         ) : (
-          <ul className="grid gap-1.5">
+          <>
+            <Ledger client={client} />
+
+            <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">
+              Mes por mes
+            </h3>
+            <ul className="grid gap-1.5">
             {[...byPeriod.entries()].map(([period, rows]) => {
               let sum = ZERO;
               for (const p of rows) sum = addMoney(sum, p.currency, p.amount);
               return (
                 <li
                   key={period}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-bg px-2.5 py-2"
+                  // min-w-0 en el <li>: sin esto la grilla le da el ancho del
+                  // contenido y la fila se sale de la tarjeta en el celular.
+                  className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-bg px-2.5 py-2"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold capitalize">{periodLabel(period)}</p>
                     <p className="truncate text-xs text-muted">
                       {rows
@@ -199,8 +215,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="text-sm font-bold tabular-nums text-ok">
-                      {formatTotals(sum).join(" + ")}
+                    {/* Una moneda por línea: unidas con " + " desbordaban a
+                        lo ancho en pantalla de celular. */}
+                    <span className="grid justify-items-end text-sm font-bold tabular-nums text-ok">
+                      {formatTotals(sum).map((t) => (
+                        <span key={t}>{t}</span>
+                      ))}
                     </span>
                     {rows.length === 1 && (
                       <ActionButton
@@ -215,9 +235,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     )}
                   </div>
                 </li>
-              );
-            })}
-          </ul>
+                );
+              })}
+            </ul>
+          </>
         )}
       </section>
 
@@ -252,6 +273,70 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         </ActionButton>
       </div>
     </>
+  );
+}
+
+/**
+ * Los acumulados del cliente: cuánto dejó en mensualidades, cuánto de pago
+ * inicial, y el total de los dos juntos. Crece solo con cada cobro.
+ */
+function Ledger({ client }: { client: ClientFull }) {
+  const l = clientLedger(client);
+  const hasSetup = l.setup.UYU > 0 || l.setup.USD > 0;
+
+  return (
+    <div className="rounded-xl bg-bg p-3">
+      <Line
+        label="Mensualidades"
+        hint={`${l.months} ${l.months === 1 ? "mes cobrado" : "meses cobrados"}`}
+        totals={l.monthly}
+      />
+
+      {hasSetup && <Line label="Pago inicial" hint="por única vez" totals={l.setup} />}
+
+      <div className="mt-2 flex items-start justify-between gap-3 border-t border-line pt-2">
+        <div>
+          <p className="text-sm font-bold">Total cobrado</p>
+          {/* Sin `capitalize`: en español los meses van en minúscula. */}
+          {l.since && (
+            <p className="text-xs text-muted">desde {periodLabel(l.since)}</p>
+          )}
+        </div>
+        <div className="grid justify-items-end">
+          {formatTotals(l.total).map((t) => (
+            <span key={t} className="text-xl font-extrabold tabular-nums text-ok">
+              {t}
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Line({
+  label,
+  hint,
+  totals,
+}: {
+  label: string;
+  hint: string;
+  totals: ReturnType<typeof clientLedger>["monthly"];
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 py-1">
+      <div>
+        <p className="text-sm font-semibold">{label}</p>
+        <p className="text-xs text-muted">{hint}</p>
+      </div>
+      <div className="grid justify-items-end">
+        {formatTotals(totals).map((t) => (
+          <span key={t} className="font-bold tabular-nums">
+            {t}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

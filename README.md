@@ -111,6 +111,18 @@ pendiente/vencido, no cuenta como deuda y no lleva botón de cobro. El MRR sigue
 mostrando el monto contratado —el acuerdo vale eso— y el dashboard aclara abajo
 cuánto no se cobra este mes por promo, para que los números cierren a la vista.
 
+### Estado de cuenta
+
+La ficha de cada cliente cierra con el acumulado histórico, que crece solo con
+cada cobro:
+
+- **Mensualidades** — todo lo cobrado en cuotas, con cuántos meses son
+- **Pago inicial** — si ya se cobró
+- **Total cobrado** — los dos juntos, desde el primer mes
+
+Debajo va el detalle mes por mes. Los totales se calculan sobre las filas de
+`payments`, así que reflejan lo que efectivamente entró, no lo contratado.
+
 ### Nada se borra de un toque
 
 El botón de las fichas dice **Archivar**, no borrar: el cliente o prospecto sale

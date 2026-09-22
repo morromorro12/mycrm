@@ -199,6 +199,46 @@ export function monthSummary(
   return { collected, pending, overdue, overdueClients, free };
 }
 
+// ── Estado de cuenta ────────────────────────────────────────────────────────
+
+export interface Ledger {
+  /** Todo lo cobrado en cuotas mensuales, desde siempre. */
+  monthly: MoneyByCurrency;
+  /** El pago inicial, si ya se cobró. */
+  setup: MoneyByCurrency;
+  /** monthly + setup: todo lo que este cliente dejó hasta hoy. */
+  total: MoneyByCurrency;
+  /** Cuántos meses distintos se cobraron (no cuántos pagos). */
+  months: number;
+  /** Período del primer cobro, para el "desde…". */
+  since: string | null;
+}
+
+/**
+ * Acumulado histórico de un cliente. Se calcula sobre los pagos registrados,
+ * así que crece solo a medida que pasan los meses.
+ */
+export function clientLedger(client: ClientFull): Ledger {
+  let monthly = ZERO;
+  let setup = ZERO;
+  let total = ZERO;
+  const months = new Set<string>();
+  let since: string | null = null;
+
+  for (const p of client.payments) {
+    total = addMoney(total, p.currency, p.amount);
+    if (p.kind === "inicial") {
+      setup = addMoney(setup, p.currency, p.amount);
+    } else {
+      monthly = addMoney(monthly, p.currency, p.amount);
+      months.add(p.period);
+    }
+    if (since === null || p.period < since) since = p.period;
+  }
+
+  return { monthly, setup, total, months: months.size, since };
+}
+
 // ── Atención hoy ────────────────────────────────────────────────────────────
 
 export interface AttentionProspect {
