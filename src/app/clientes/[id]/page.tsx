@@ -20,8 +20,10 @@ import {
 import {
   clientLedger,
   clientStatus,
+  dueDate,
   isFreeMonth,
   isPaymentInFreeMonth,
+  nextDueDate,
   serviceStatus,
   setupPayment,
   setupStatus,
@@ -83,7 +85,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               {client.contact_name ?? "Sin contacto"} · {prettyPhone(client.phone)}
             </p>
           </div>
-          <StatusChip status={status} />
+          <StatusChip status={status} due={nextDueDate(client, today)} today={today} />
         </div>
 
         <div className="mt-2 flex flex-wrap items-baseline gap-x-3">
@@ -354,7 +356,7 @@ function SetupSection({ client, today }: { client: ClientFull; today: string }) 
     <section className="card mb-3 p-4">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h2 className="text-xs font-bold uppercase tracking-wide text-muted">Pago inicial</h2>
-        {status && <StatusChip status={status} />}
+        {status && <StatusChip status={status} due={client.setup_due_on} today={today} />}
       </div>
 
       {!has ? (
@@ -476,7 +478,7 @@ function ServiceRow({
           <p className="text-lg font-extrabold tabular-nums">{formatMoney(s.amount, s.currency)}</p>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {s.active && <StatusChip status={status} />}
+          {s.active && <StatusChip status={status} due={dueDate(s, today)} today={today} />}
           {/* `gratis` no lleva botón: ese mes no hay nada que cobrar. */}
           {s.active && (status === "pendiente" || status === "vencido") && (
             <ActionButton

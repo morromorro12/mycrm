@@ -6,7 +6,7 @@ import { ActionButton } from "@/components/ActionButton";
 import { IconCheck } from "@/components/icons";
 import { StatusChip, WhatsAppButton } from "@/components/ui";
 import { markClientPaid } from "@/lib/actions";
-import { clientStatus, serviceStatus } from "@/lib/billing";
+import { clientStatus, nextDueDate, serviceStatus } from "@/lib/billing";
 import { effectiveBillingDay } from "@/lib/dates";
 import { formatMoney, formatTotals, ZERO, addMoney } from "@/lib/money";
 import { KIND_LABEL, type ClientFull, type PaymentStatus } from "@/lib/types";
@@ -132,9 +132,17 @@ const STRIPE: Record<PaymentStatus | "pausado", string> = {
 const stripe = (s: PaymentStatus | null) => STRIPE[s ?? "pausado"];
 
 /** Chip de estado, o la marca de pausado cuando el cliente no está activo. */
-function RowStatus({ status }: { status: PaymentStatus | null }) {
+function RowStatus({
+  client,
+  status,
+  today,
+}: {
+  client: ClientFull;
+  status: PaymentStatus | null;
+  today: string;
+}) {
   if (status === null) return <span className="chip bg-bg text-muted">Pausado</span>;
-  return <StatusChip status={status} />;
+  return <StatusChip status={status} due={nextDueDate(client, today)} today={today} />;
 }
 
 function Card({
@@ -157,7 +165,7 @@ function Card({
             · {billingDays(client, today)}
           </p>
         </Link>
-        <RowStatus status={status} />
+        <RowStatus client={client} status={status} today={today} />
       </div>
 
       <div className="mt-2 flex items-end justify-between gap-2">
@@ -222,7 +230,7 @@ function Row({
       </td>
       <td className="whitespace-nowrap px-3 py-2 text-xs text-muted">{billingDays(client, today)}</td>
       <td className="px-3 py-2">
-        <RowStatus status={status} />
+        <RowStatus client={client} status={status} today={today} />
       </td>
       <td className="px-3 py-2">
         <div className="flex justify-end gap-2">

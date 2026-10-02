@@ -61,6 +61,21 @@ export function serviceStatus(
   return dayOfMonth(today) > due ? "vencido" : "pendiente";
 }
 
+/** Fecha en que vence la cuota de este mes: '2026-10-15'. */
+export function dueDate(service: ClientService, today = todayISO()): string {
+  const day = String(effectiveBillingDay(service.billing_day, today)).padStart(2, "0");
+  return `${today.slice(0, 7)}-${day}`;
+}
+
+/** De las cuotas del cliente que siguen pendientes, cuándo vence la primera. */
+export function nextDueDate(client: ClientFull, today = todayISO()): string | null {
+  const dates = client.services
+    .filter((s) => s.active && serviceStatus(s, client.payments, today) === "pendiente")
+    .map((s) => dueDate(s, today))
+    .sort();
+  return dates[0] ?? null;
+}
+
 /** ¿Vence justo hoy? Sirve para la lista de Atención hoy. */
 export function isDueToday(
   service: ClientService,

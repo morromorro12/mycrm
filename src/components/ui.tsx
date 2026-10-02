@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { daysBetween, shortDate, todayISO } from "@/lib/dates";
 import type { PaymentStatus } from "@/lib/types";
 import { prettyPhone, waLink } from "@/lib/whatsapp";
 import { IconWhatsApp } from "./icons";
@@ -17,12 +18,34 @@ const STATUS_LABEL: Record<PaymentStatus, string> = {
   gratis: "Mes gratis",
 };
 
-/** Verde / amarillo / rojo. El punto ayuda si mirás la pantalla de reojo. */
-export function StatusChip({ status }: { status: PaymentStatus }) {
+/**
+ * Un "Pendiente" a secas parece una deuda aunque falten dos semanas. Con la
+ * fecha queda claro que todavía no hay nada atrasado: eso es "Vencido".
+ */
+function dueLabel(due: string, today: string): string {
+  const d = daysBetween(today, due);
+  if (d === 0) return "Vence hoy";
+  if (d === 1) return "Vence mañana";
+  return `Vence el ${shortDate(due)}`;
+}
+
+/**
+ * Verde / amarillo / rojo. El punto ayuda si mirás la pantalla de reojo.
+ * `due` = cuándo vence lo pendiente; sin fecha queda "Pendiente".
+ */
+export function StatusChip({
+  status,
+  due,
+  today = todayISO(),
+}: {
+  status: PaymentStatus;
+  due?: string | null;
+  today?: string;
+}) {
   return (
-    <span className={`chip ${STATUS_STYLE[status]}`}>
+    <span className={`chip whitespace-nowrap ${STATUS_STYLE[status]}`}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden />
-      {STATUS_LABEL[status]}
+      {status === "pendiente" && due ? dueLabel(due, today) : STATUS_LABEL[status]}
     </span>
   );
 }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { SearchBox } from "@/components/SearchBox";
 import { Empty, PageTitle, StatusChip, WhatsAppButton } from "@/components/ui";
-import { clientStatus } from "@/lib/billing";
+import { clientStatus, nextDueDate } from "@/lib/billing";
 import { repo } from "@/lib/data";
 import { todayISO } from "@/lib/dates";
 import { addMoney, formatTotals, ZERO } from "@/lib/money";
@@ -66,7 +66,7 @@ export default async function SearchPage({
                         </p>
                       </Link>
                       {c.active ? (
-                        <StatusChip status={clientStatus(c, today)} />
+                        <StatusChip status={clientStatus(c, today)} due={nextDueDate(c, today)} today={today} />
                       ) : (
                         <span className="chip bg-bg text-muted">Pausado</span>
                       )}
