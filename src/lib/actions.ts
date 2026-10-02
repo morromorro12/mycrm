@@ -297,6 +297,7 @@ export async function markServicePaid(clientId: string, serviceId: string) {
   const client = await r.getClient(clientId);
   const svc = client?.services.find((s) => s.id === serviceId);
   if (!client || !svc) return;
+  if (isFreeMonth(svc)) return; // mes de promo: no hay nada que cobrar
 
   await r.recordPayment({
     clientId,

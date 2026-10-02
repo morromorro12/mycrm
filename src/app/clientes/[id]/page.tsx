@@ -21,6 +21,7 @@ import {
   clientLedger,
   clientStatus,
   isFreeMonth,
+  isPaymentInFreeMonth,
   serviceStatus,
   setupPayment,
   setupStatus,
@@ -192,51 +193,51 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               Mes por mes
             </h3>
             <ul className="grid gap-1.5">
-            {[...byPeriod.entries()].map(([period, rows]) => {
-              let sum = ZERO;
-              for (const p of rows) sum = addMoney(sum, p.currency, p.amount);
-              return (
-                <li
-                  key={period}
-                  // min-w-0 en el <li>: sin esto la grilla le da el ancho del
-                  // contenido y la fila se sale de la tarjeta en el celular.
-                  className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-bg px-2.5 py-2"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold capitalize">{periodLabel(period)}</p>
-                    <p className="truncate text-xs text-muted">
-                      {rows
-                        .map((p) => {
-                          if (p.kind === "inicial") return `Pago inicial · ${shortDate(p.paid_at)}`;
-                          const svc = client.services.find((s) => s.id === p.service_id);
-                          return `${svc ? KIND_LABEL[svc.kind] : "Pago"} · ${shortDate(p.paid_at)}`;
-                        })
-                        .join(" | ")}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {/* Una moneda por línea: unidas con " + " desbordaban a
-                        lo ancho en pantalla de celular. */}
-                    <span className="grid justify-items-end text-sm font-bold tabular-nums text-ok">
-                      {formatTotals(sum).map((t) => (
-                        <span key={t}>{t}</span>
-                      ))}
-                    </span>
-                    {rows.length === 1 && (
-                      <ActionButton
-                        action={deletePayment.bind(null, rows[0].id)}
-                        className="btn !min-h-[1.9rem] !px-2 !text-xs text-muted"
-                        confirm="¿Borrar este pago del historial?"
-                        pendingLabel="…"
-                        title="Deshacer este pago"
-                      >
-                        ✕
-                      </ActionButton>
-                    )}
-                  </div>
-                </li>
-                );
-              })}
+            {[...byPeriod.entries()].map(([period, rows]) => (
+              <li
+                key={period}
+                // min-w-0 en el <li>: sin esto la grilla le da el ancho del
+                // contenido y la fila se sale de la tarjeta en el celular.
+                className="min-w-0 rounded-lg bg-bg px-2.5 py-2"
+              >
+                <p className="text-sm font-semibold capitalize">{periodLabel(period)}</p>
+                {/* Una línea y un ✕ por pago: si el mes junta la cuota y el
+                    pago inicial, cada uno se tiene que poder deshacer solo. */}
+                <ul className="mt-1 grid gap-1">
+                  {rows.map((p) => {
+                    const svc = client.services.find((s) => s.id === p.service_id);
+                    const label =
+                      p.kind === "inicial" ? "Pago inicial" : svc ? KIND_LABEL[svc.kind] : "Pago";
+                    return (
+                      <li key={p.id} className="flex min-w-0 items-center justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs text-muted">
+                            {label} · {shortDate(p.paid_at)}
+                          </p>
+                          {isPaymentInFreeMonth(p, client.services) && (
+                            <p className="text-xs font-semibold text-warn">
+                              Este mes era gratis: ¿quedó marcado por error?
+                            </p>
+                          )}
+                        </div>
+                        <span className="shrink-0 text-sm font-bold tabular-nums text-ok">
+                          {formatMoney(p.amount, p.currency)}
+                        </span>
+                        <ActionButton
+                          action={deletePayment.bind(null, p.id)}
+                          className="btn !min-h-[1.9rem] !px-2 !text-xs text-muted"
+                          confirm="¿Borrar este pago del historial?"
+                          pendingLabel="…"
+                          title="Deshacer este pago"
+                        >
+                          ✕
+                        </ActionButton>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </li>
+            ))}
             </ul>
           </>
         )}

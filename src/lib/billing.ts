@@ -37,6 +37,17 @@ export function isFreeMonth(service: ClientService, today = todayISO()): boolean
   return periodOf(today) === periodOf(service.starts_on);
 }
 
+/**
+ * Una cuota registrada en el mes de promo de su servicio. No debería existir:
+ * pasa si se marcó cobrado y DESPUÉS se le puso "primer mes gratis" (o se
+ * movió la fecha de arranque). No se descarta sola: se avisa en la ficha.
+ */
+export function isPaymentInFreeMonth(payment: Payment, services: ClientService[]): boolean {
+  if (payment.kind !== "mensual") return false;
+  const svc = services.find((s) => s.id === payment.service_id);
+  return !!svc?.first_month_free && payment.period === periodOf(svc.starts_on);
+}
+
 export function serviceStatus(
   service: ClientService,
   payments: Payment[],
