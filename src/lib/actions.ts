@@ -6,6 +6,7 @@ import { currentPeriod, todayISO } from "./dates";
 import { isFreeMonth } from "./billing";
 import { repo } from "./data";
 import type {
+  AdCard,
   CurrencyCode,
   LeadSource,
   ProspectStage,
@@ -135,6 +136,26 @@ export async function convertProspect(prospectId: string, fd: FormData) {
 
 // ── Clientes ────────────────────────────────────────────────────────────────
 
+/**
+ * La pauta en Meta de un servicio de Ads: cuánto quiere invertir el cliente y
+ * con qué tarjeta se paga. En cualquier otro servicio queda vacía, así que
+ * pasar un servicio de Ads a Retainer la borra.
+ */
+function parseAdSpend(
+  kind: ServiceKind,
+  budget: FormDataEntryValue | null,
+  currency: FormDataEntryValue | null,
+  card: FormDataEntryValue | null,
+) {
+  if (kind !== "ads") return { ad_budget: null, ad_currency: "USD" as CurrencyCode, ad_card: null };
+  const n = Number(String(budget ?? "").replace(",", "."));
+  return {
+    ad_budget: n > 0 ? n : null,
+    ad_currency: (String(currency ?? "") || "USD") as CurrencyCode,
+    ad_card: card === "cliente" || card === "mia" ? (card as AdCard) : null,
+  };
+}
+
 /** Los servicios llegan como filas repetidas del form: kind[], amount[], … */
 function parseServices(fd: FormData) {
   const kinds = fd.getAll("svc_kind").map(String);
@@ -154,6 +175,14 @@ function parseServices(fd: FormData) {
       active: true,
       starts_on: starts[i] || todayISO(),
       first_month_free: free.has(String(i)),
+      // Sólo las filas de Ads traen estos campos, por eso van con el índice
+      // en el nombre en vez de como lista.
+      ...parseAdSpend(
+        kind as ServiceKind,
+        fd.get(`ad_budget_${i}`),
+        fd.get(`ad_currency_${i}`),
+        fd.get(`ad_card_${i}`),
+      ),
     }))
     .filter((s) => s.kind && s.amount > 0);
 }
@@ -226,26 +255,30 @@ export async function deleteClient(id: string) {
 export async function addService(clientId: string, fd: FormData) {
   const amount = num(fd, "amount");
   if (amount <= 0) return;
+  const kind = (str(fd, "kind") || "retainer") as ServiceKind;
   await repo().addService(clientId, {
-    kind: (str(fd, "kind") || "retainer") as ServiceKind,
+    kind,
     amount,
     currency: (str(fd, "currency") || "UYU") as CurrencyCode,
     billing_day: Math.min(31, Math.max(1, Number(str(fd, "billing_day")) || 1)),
     active: true,
     starts_on: str(fd, "starts_on") || todayISO(),
     first_month_free: fd.get("first_month_free") === "on",
+    ...parseAdSpend(kind, fd.get("ad_budget"), fd.get("ad_currency"), fd.get("ad_card")),
   });
   refresh();
 }
 
 export async function updateService(id: string, fd: FormData) {
+  const kind = (str(fd, "kind") || "retainer") as ServiceKind;
   await repo().updateService(id, {
-    kind: (str(fd, "kind") || "retainer") as ServiceKind,
+    kind,
     amount: num(fd, "amount"),
     currency: (str(fd, "currency") || "UYU") as CurrencyCode,
     billing_day: Math.min(31, Math.max(1, Number(str(fd, "billing_day")) || 1)),
     starts_on: str(fd, "starts_on") || todayISO(),
     first_month_free: fd.get("first_month_free") === "on",
+    ...parseAdSpend(kind, fd.get("ad_budget"), fd.get("ad_currency"), fd.get("ad_card")),
   });
   refresh();
 }

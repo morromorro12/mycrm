@@ -33,6 +33,11 @@ do $$ begin
   create type payment_kind as enum ('mensual','inicial');
 exception when duplicate_object then null; end $$;
 
+-- Con qué tarjeta se paga la pauta de un servicio de Ads.
+do $$ begin
+  create type ad_card as enum ('cliente','mia');
+exception when duplicate_object then null; end $$;
+
 -- ── Clientes activos ────────────────────────────────────────────────────────
 create table if not exists clients (
   id            uuid primary key default gen_random_uuid(),
@@ -66,6 +71,11 @@ create table if not exists client_services (
   starts_on   date          not null default current_date,
   -- Promo de cierre: el mes de starts_on no se cobra.
   first_month_free boolean  not null default false,
+  -- Sólo Ads: la pauta en Meta. Es plata del cliente, aparte de tus
+  -- honorarios (amount), así que no entra en el MRR. null = sin cargar.
+  ad_budget   numeric(12,2) check (ad_budget is null or ad_budget >= 0),
+  ad_currency currency_code not null default 'USD',
+  ad_card     ad_card,                      -- 'cliente' | 'mia'
   created_at  timestamptz   not null default now(),
   updated_at  timestamptz   not null default now()
 );
@@ -146,6 +156,12 @@ alter table clients add column if not exists setup_note     text;
 alter table client_services add column if not exists starts_on        date    not null default current_date;
 alter table client_services add column if not exists first_month_free boolean not null default false;
 alter table payments        add column if not exists kind             payment_kind not null default 'mensual';
+
+-- Pauta de los servicios de Ads.
+alter table client_services add column if not exists ad_budget   numeric(12,2)
+  check (ad_budget is null or ad_budget >= 0);
+alter table client_services add column if not exists ad_currency currency_code not null default 'USD';
+alter table client_services add column if not exists ad_card     ad_card;
 
 -- ── updated_at automático ───────────────────────────────────────────────────
 create or replace function touch_updated_at() returns trigger

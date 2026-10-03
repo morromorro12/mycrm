@@ -131,6 +131,16 @@ input, select, textarea, button {
   }
 }
 
+/* Pauta en los forms de un solo servicio de la ficha: aparece sólo mientras
+   el servicio elegido sea Ads, sin JavaScript. Fuera de @layer para ganarle a
+   la clase `grid` de Tailwind. */
+.ads-only {
+  display: none;
+}
+form:has(select[name="kind"] > option[value="ads"]:checked) .ads-only {
+  display: grid;
+}
+
 /* El kanban scrollea de a columnas completas en el celular. */
 .snap-cols {
   scroll-snap-type: x mandatory;

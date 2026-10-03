@@ -4,8 +4,25 @@
     {
       "name": "crm",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 3000
+    },
+    {
+      "name": "crm-demo",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "NEXT_PUBLIC_SUPABASE_URL=",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY=",
+        "npx",
+        "next",
+        "dev",
+        "-p",
+        "3001"
+      ],
+      "port": 3001
     }
   ]
 }

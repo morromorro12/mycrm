@@ -111,6 +111,16 @@ pendiente/vencido, no cuenta como deuda y no lleva botón de cobro. El MRR sigue
 mostrando el monto contratado —el acuerdo vale eso— y el dashboard aclara abajo
 cuánto no se cobra este mes por promo, para que los números cierren a la vista.
 
+### Pauta de Ads
+
+Cuando un servicio es de **Ads**, el alta pide también la pauta en Meta: cuánto
+quiere invertir el cliente por mes (con su moneda, US$ por defecto) y con qué
+tarjeta se paga, la del cliente o la tuya. La tarjeta es obligatoria en el alta.
+
+La pauta es plata del cliente, aparte de tus honorarios: **no entra en el MRR**
+ni genera cobros. Es un dato de la ficha. Si se paga con tu tarjeta, la ficha
+te recuerda que se la tenés que cobrar aparte.
+
 ### Total cobrado
 
 El dashboard muestra, debajo del MRR, el acumulado de **todo** lo que entró

@@ -17,6 +17,9 @@ export type PaymentStatus = "pagado" | "pendiente" | "vencido" | "gratis";
 
 export type PaymentKind = "mensual" | "inicial";
 
+/** Con qué tarjeta se paga la pauta en Meta. */
+export type AdCard = "cliente" | "mia";
+
 export interface Prospect {
   id: string;
   business_name: string;
@@ -46,6 +49,14 @@ export interface ClientService {
   starts_on: string; // YYYY-MM-DD
   /** Promo de cierre: el mes de `starts_on` no se cobra. */
   first_month_free: boolean;
+  /**
+   * Sólo Ads: cuánto quiere invertir el cliente por mes en Meta. Es aparte de
+   * `amount` (tus honorarios) y no entra en el MRR. null = sin cargar.
+   */
+  ad_budget: number | null;
+  ad_currency: CurrencyCode;
+  /** Sólo Ads: con qué tarjeta se paga esa pauta. null = sin cargar. */
+  ad_card: AdCard | null;
 }
 
 export interface Payment {
@@ -123,6 +134,11 @@ export const STATUS_LABEL: Record<PaymentStatus, string> = {
   pendiente: "Pendiente",
   vencido: "Vencido",
   gratis: "Gratis",
+};
+
+export const AD_CARD_LABEL: Record<AdCard, string> = {
+  cliente: "Tarjeta del cliente",
+  mia: "Mi tarjeta",
 };
 
 export const KIND_LABEL: Record<ServiceKind, string> = {

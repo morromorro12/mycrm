@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { KIND_LABEL, type ServiceKind } from "@/lib/types";
+import { AdSpendFields } from "./AdSpendFields";
 
 const KINDS: ServiceKind[] = ["web", "retainer", "ads"];
 
@@ -73,7 +74,7 @@ export function ServicesFieldset({ today }: { today: string }) {
               />
             </label>
             <label>
-              <span className="label">Monto mensual</span>
+              <span className="label">{r.kind === "ads" ? "Honorarios por mes" : "Monto mensual"}</span>
               <input
                 name="svc_amount"
                 type="number"
@@ -98,6 +99,12 @@ export function ServicesFieldset({ today }: { today: string }) {
                 <option value="USD">US$ (dólares)</option>
               </select>
             </label>
+
+            {/* Un cliente de Ads se anota con su pauta: cuánto invierte y con
+                qué tarjeta. El índice en el nombre dice a qué fila pertenece. */}
+            {r.kind === "ads" && (
+              <AdSpendFields suffix={`_${i}`} requireCard fieldClass="field !min-h-[2.5rem]" />
+            )}
 
             <label className="col-span-2">
               <span className="label">Arranca el</span>

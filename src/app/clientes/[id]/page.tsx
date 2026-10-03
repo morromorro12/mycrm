@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton, SubmitButton } from "@/components/ActionButton";
+import { AdSpendFields } from "@/components/clients/AdSpendFields";
 import { IconCheck } from "@/components/icons";
 import { BackLink, StatusChip, WhatsAppButton } from "@/components/ui";
 import {
@@ -164,6 +165,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                 <option value="USD">US$ (dólares)</option>
               </select>
             </label>
+            <AdSpendFields onlyWhenAds />
             <label className="col-span-2">
               <span className="label">Arranca el</span>
               <input name="starts_on" type="date" defaultValue={today} className="field" />
@@ -445,6 +447,29 @@ function SetupSection({ client, today }: { client: ClientFull; today: string }) 
   );
 }
 
+/** La pauta de un servicio de Ads, debajo de tus honorarios. */
+function AdSpendLine({ service: s }: { service: ClientService }) {
+  if (s.ad_budget == null && s.ad_card == null) {
+    return <p className="text-xs text-muted">Pauta sin cargar · tocá Editar</p>;
+  }
+  const budget = s.ad_budget != null ? `${formatMoney(s.ad_budget, s.ad_currency)} por mes` : "sin monto";
+  const card =
+    s.ad_card === "mia" ? "con tu tarjeta" : s.ad_card === "cliente" ? "tarjeta del cliente" : "tarjeta sin definir";
+
+  return (
+    <>
+      <p className="text-xs text-muted">
+        Pauta: <span className="font-semibold text-ink">{budget}</span> · {card}
+      </p>
+      {s.ad_card === "mia" && (
+        <p className="text-xs font-semibold text-warn">
+          Sale de tu tarjeta: la pauta se la cobrás aparte.
+        </p>
+      )}
+    </>
+  );
+}
+
 function ServiceRow({
   service: s,
   clientId,
@@ -476,6 +501,7 @@ function ServiceRow({
             </p>
           )}
           <p className="text-lg font-extrabold tabular-nums">{formatMoney(s.amount, s.currency)}</p>
+          {s.kind === "ads" && <AdSpendLine service={s} />}
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5">
           {s.active && <StatusChip status={status} due={dueDate(s, today)} today={today} />}
@@ -524,6 +550,13 @@ function ServiceRow({
             <option value="UYU">$U</option>
             <option value="USD">US$</option>
           </select>
+          <AdSpendFields
+            onlyWhenAds
+            budget={s.ad_budget}
+            currency={s.ad_currency}
+            card={s.ad_card}
+            fieldClass="field !min-h-[2.3rem] !text-sm"
+          />
           <label className="col-span-2">
             <span className="label">Arrancó el</span>
             <input
