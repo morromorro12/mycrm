@@ -38,6 +38,25 @@ export function isFreeMonth(service: ClientService, today = todayISO()): boolean
 }
 
 /**
+ * ¿Este mes es el primer mes con descuento del servicio? A diferencia del mes
+ * gratis, sí hay algo que cobrar: vence y queda pendiente como cualquier mes.
+ */
+export function isDiscountMonth(service: ClientService, today = todayISO()): boolean {
+  if (service.first_month_free || service.first_month_amount == null) return false;
+  return periodOf(today) === periodOf(service.starts_on);
+}
+
+/**
+ * Cuánto se cobra este mes por el servicio: 0 el mes gratis, el monto con
+ * descuento el primer mes, y `amount` todos los demás.
+ */
+export function amountDue(service: ClientService, today = todayISO()): number {
+  if (isFreeMonth(service, today)) return 0;
+  if (isDiscountMonth(service, today)) return service.first_month_amount!;
+  return service.amount;
+}
+
+/**
  * Una cuota registrada en el mes de promo de su servicio. No debería existir:
  * pasa si se marcó cobrado y DESPUÉS se le puso "primer mes gratis" (o se
  * movió la fecha de arranque). No se descarta sola: se avisa en la ficha.
@@ -185,6 +204,8 @@ export interface MonthSummary {
    * no coincide con cobrado + pendiente.
    */
   free: MoneyByCurrency;
+  /** Lo que se deja de cobrar este mes por descuentos de primer mes. */
+  discount: MoneyByCurrency;
 }
 
 /** Cobrado vs pendiente del mes en curso. */
@@ -196,6 +217,7 @@ export function monthSummary(
   let pending = ZERO;
   let overdue = ZERO;
   let free = ZERO;
+  let discount = ZERO;
   let overdueClients = 0;
 
   for (const c of clients) {
@@ -209,12 +231,14 @@ export function monthSummary(
         free = addMoney(free, s.currency, s.amount);
         continue;
       }
+      const due = amountDue(s, today);
+      if (due < s.amount) discount = addMoney(discount, s.currency, s.amount - due);
       if (status === "pagado") {
-        collected = addMoney(collected, s.currency, s.amount);
+        collected = addMoney(collected, s.currency, due);
       } else {
-        pending = addMoney(pending, s.currency, s.amount);
+        pending = addMoney(pending, s.currency, due);
         if (status === "vencido") {
-          overdue = addMoney(overdue, s.currency, s.amount);
+          overdue = addMoney(overdue, s.currency, due);
           hasOverdue = true;
         }
       }
@@ -222,7 +246,7 @@ export function monthSummary(
     if (hasOverdue) overdueClients++;
   }
 
-  return { collected, pending, overdue, overdueClients, free };
+  return { collected, pending, overdue, overdueClients, free, discount };
 }
 
 // ── Estado de cuenta ────────────────────────────────────────────────────────

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton, SubmitButton } from "@/components/ActionButton";
 import { AdSpendFields } from "@/components/clients/AdSpendFields";
+import { FirstMonthFields } from "@/components/clients/FirstMonthFields";
 import { IconCheck } from "@/components/icons";
 import { BackLink, StatusChip, WhatsAppButton } from "@/components/ui";
 import {
@@ -22,6 +23,7 @@ import {
   clientLedger,
   clientStatus,
   dueDate,
+  isDiscountMonth,
   isFreeMonth,
   isPaymentInFreeMonth,
   nextDueDate,
@@ -170,10 +172,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               <span className="label">Arranca el</span>
               <input name="starts_on" type="date" defaultValue={today} className="field" />
             </label>
-            <label className="col-span-2 flex items-center gap-2 text-sm">
-              <input type="checkbox" name="first_month_free" className="h-4 w-4" />
-              Primer mes gratis
-            </label>
+            <FirstMonthFields />
             <div className="col-span-2">
               <SubmitButton className="btn btn-primary w-full">Agregar</SubmitButton>
             </div>
@@ -396,7 +395,13 @@ function SetupSection({ client, today }: { client: ClientFull; today: string }) 
         <summary className="cursor-pointer text-sm font-semibold text-brand">
           {has ? "Editar pago inicial" : "+ Cargar pago inicial"}
         </summary>
-        <form action={saveSetup.bind(null, client.id)} className="mt-2 grid grid-cols-2 gap-2">
+        {/* Misma key que en el form de servicio: sin ella, la moneda vuelve
+            a la que tenía al montarse después de guardar. */}
+        <form
+          key={[client.setup_amount, client.setup_currency, client.setup_due_on, client.setup_note].join("|")}
+          action={saveSetup.bind(null, client.id)}
+          className="mt-2 grid grid-cols-2 gap-2"
+        >
           <label>
             <span className="label">Monto</span>
             <input
@@ -500,6 +505,14 @@ function ServiceRow({
                 : `Tuvo el primer mes gratis (${shortDate(s.starts_on)})`}
             </p>
           )}
+          {s.first_month_amount != null && !s.first_month_free && (
+            <p className="text-xs font-semibold text-brand">
+              {isDiscountMonth(s, today)
+                ? `Primer mes con descuento — este mes se cobra ${formatMoney(s.first_month_amount, s.currency)}`
+                : `Primer mes con descuento: ${formatMoney(s.first_month_amount, s.currency)} (${shortDate(s.starts_on)})`}
+              {s.amount > 0 && ` · ${Math.round((1 - s.first_month_amount / s.amount) * 100)}% menos`}
+            </p>
+          )}
           <p className="text-lg font-extrabold tabular-nums">{formatMoney(s.amount, s.currency)}</p>
           {s.kind === "ads" && <AdSpendLine service={s} />}
         </div>
@@ -520,7 +533,14 @@ function ServiceRow({
 
       <details className="mt-1.5">
         <summary className="cursor-pointer text-xs font-semibold text-muted">Editar</summary>
-        <form action={updateService.bind(null, s.id)} className="mt-2 grid grid-cols-2 gap-2">
+        {/* Al guardar, React resetea el form a sus valores por defecto, pero
+            un <select> vuelve al que tenía al montarse, no al nuevo. La key
+            con los datos del servicio lo rearma cada vez que cambian. */}
+        <form
+          key={JSON.stringify(s)}
+          action={updateService.bind(null, s.id)}
+          className="mt-2 grid grid-cols-2 gap-2"
+        >
           <select name="kind" defaultValue={s.kind} className="field !min-h-[2.3rem] !text-sm">
             {KINDS.map((k) => (
               <option key={k} value={k}>
@@ -566,15 +586,7 @@ function ServiceRow({
               className="field !min-h-[2.3rem] !text-sm"
             />
           </label>
-          <label className="col-span-2 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="first_month_free"
-              defaultChecked={s.first_month_free}
-              className="h-4 w-4"
-            />
-            Primer mes gratis
-          </label>
+          <FirstMonthFields service={s} fieldClass="field !min-h-[2.3rem] !text-sm" />
           <SubmitButton className="btn btn-primary !min-h-[2.2rem] !text-sm">Guardar</SubmitButton>
         </form>
         <div className="mt-2 flex gap-2">

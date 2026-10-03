@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { markClientPaid, markSetupPaid, snoozeProspect, touchProspect } from "@/lib/actions";
-import type { AttentionItem } from "@/lib/billing";
+import { amountDue, type AttentionItem } from "@/lib/billing";
 import { relativeDay } from "@/lib/dates";
 import { formatMoney } from "@/lib/money";
 import { KIND_LABEL, STAGE_LABEL } from "@/lib/types";
@@ -36,7 +36,7 @@ function ClientRow({ item }: { item: Extract<AttentionItem, { kind: "client" }> 
   // El pago inicial es otro cobro, con otro monto y su propio botón.
   const total = item.setup
     ? formatMoney(client.setup_amount ?? 0, client.setup_currency)
-    : services.map((s) => formatMoney(s.amount, s.currency)).join(" + ");
+    : services.map((s) => formatMoney(amountDue(s), s.currency)).join(" + ");
   const detail = item.setup
     ? (client.setup_note ?? "Pago inicial")
     : services.map((s) => KIND_LABEL[s.kind]).join(", ");

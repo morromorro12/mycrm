@@ -149,8 +149,8 @@ export function seedClients(): ClientFull[] {
       setup_due_on: shift(-3),
       setup_note: "Armado del sitio + integración de pedidos a WhatsApp.",
       services: [
-        { id: "s1", client_id: "c1", kind: "retainer", amount: 6500, currency: "UYU", billing_day: 5, active: true, starts_on: period(6), first_month_free: false, ad_budget: null, ad_currency: "USD", ad_card: null },
-        { id: "s2", client_id: "c1", kind: "ads", amount: 250, currency: "USD", billing_day: 5, active: true, starts_on: period(6), first_month_free: false, ad_budget: 300, ad_currency: "USD", ad_card: "cliente" },
+        { id: "s1", client_id: "c1", kind: "retainer", amount: 6500, currency: "UYU", billing_day: 5, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
+        { id: "s2", client_id: "c1", kind: "ads", amount: 250, currency: "USD", billing_day: 5, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: 300, ad_currency: "USD", ad_card: "cliente" },
       ],
       payments: [
         pay("pay1", "c1", "s1", 0, 6500, "UYU"),
@@ -173,7 +173,7 @@ export function seedClients(): ClientFull[] {
       setup_due_on: null,
       setup_note: null,
       services: [
-        { id: "s3", client_id: "c2", kind: "web", amount: 4200, currency: "UYU", billing_day: 1, active: true, starts_on: period(6), first_month_free: false, ad_budget: null, ad_currency: "USD", ad_card: null },
+        { id: "s3", client_id: "c2", kind: "web", amount: 4200, currency: "UYU", billing_day: 1, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
       payments: [pay("pay6", "c2", "s3", 1, 4200, "UYU"), pay("pay7", "c2", "s3", 2, 4200, "UYU")],
     },
@@ -190,8 +190,8 @@ export function seedClients(): ClientFull[] {
       setup_due_on: null,
       setup_note: null,
       services: [
-        { id: "s4", client_id: "c3", kind: "retainer", amount: 5000, currency: "UYU", billing_day: 10, active: true, starts_on: period(6), first_month_free: false, ad_budget: null, ad_currency: "USD", ad_card: null },
-        { id: "s5", client_id: "c3", kind: "ads", amount: 400, currency: "USD", billing_day: 10, active: true, starts_on: period(6), first_month_free: false, ad_budget: 500, ad_currency: "USD", ad_card: "mia" },
+        { id: "s4", client_id: "c3", kind: "retainer", amount: 5000, currency: "UYU", billing_day: 10, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
+        { id: "s5", client_id: "c3", kind: "ads", amount: 400, currency: "USD", billing_day: 10, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: 500, ad_currency: "USD", ad_card: "mia" },
       ],
       payments: [pay("pay8", "c3", "s4", 1, 5000, "UYU"), pay("pay9", "c3", "s5", 1, 400, "USD")],
     },
@@ -208,7 +208,7 @@ export function seedClients(): ClientFull[] {
       setup_due_on: null,
       setup_note: null,
       services: [
-        { id: "s6", client_id: "c4", kind: "web", amount: 3800, currency: "UYU", billing_day: 20, active: true, starts_on: period(6), first_month_free: false, ad_budget: null, ad_currency: "USD", ad_card: null },
+        { id: "s6", client_id: "c4", kind: "web", amount: 3800, currency: "UYU", billing_day: 20, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
       payments: [pay("pay10", "c4", "s6", 1, 3800, "UYU")],
     },
@@ -225,7 +225,7 @@ export function seedClients(): ClientFull[] {
       setup_due_on: null,
       setup_note: null,
       services: [
-        { id: "s7", client_id: "c5", kind: "retainer", amount: 3500, currency: "UYU", billing_day: 28, active: true, starts_on: period(6), first_month_free: false, ad_budget: null, ad_currency: "USD", ad_card: null },
+        { id: "s7", client_id: "c5", kind: "retainer", amount: 3500, currency: "UYU", billing_day: 28, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
       payments: [pay("pay11", "c5", "s7", 1, 3500, "UYU")],
     },

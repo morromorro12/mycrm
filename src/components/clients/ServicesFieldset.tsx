@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { KIND_LABEL, type ServiceKind } from "@/lib/types";
 import { AdSpendFields } from "./AdSpendFields";
+import { FirstMonthFields } from "./FirstMonthFields";
 
 const KINDS: ServiceKind[] = ["web", "retainer", "ads"];
 
@@ -13,7 +14,6 @@ interface Row {
   currency: "UYU" | "USD";
   day: string;
   startsOn: string;
-  free: boolean;
 }
 
 const blank = (key: number, today: string): Row => ({
@@ -23,7 +23,6 @@ const blank = (key: number, today: string): Row => ({
   currency: "UYU",
   day: "1",
   startsOn: today,
-  free: false,
 });
 
 /**
@@ -116,17 +115,7 @@ export function ServicesFieldset({ today }: { today: string }) {
                 className="field !min-h-[2.5rem]"
               />
             </label>
-            <label className="col-span-2 flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={r.free}
-                onChange={(e) => patch(r.key, { free: e.target.checked })}
-                className="h-4 w-4"
-              />
-              Primer mes gratis
-              {/* El valor es el índice: así el server sabe qué fila va gratis. */}
-              {r.free && <input type="hidden" name="svc_free" value={i} />}
-            </label>
+            <FirstMonthFields suffix={`_${i}`} fieldClass="field !min-h-[2.5rem]" />
 
             {rows.length > 1 && (
               <button

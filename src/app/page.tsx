@@ -32,6 +32,16 @@ export default async function Dashboard() {
   const setupsIn = collectedSetups(clients, today);
   const ledger = globalLedger(clients, archived.clients);
 
+  // Lo que las promos de primer mes dejan afuera de este mes, para que se
+  // entienda por qué cobrado + pendiente no llega al MRR.
+  const promos: string[] = [];
+  if (month.free.UYU > 0 || month.free.USD > 0) {
+    promos.push(`${formatTotals(month.free).join(" + ")} por primer mes gratis`);
+  }
+  if (month.discount.UYU > 0 || month.discount.USD > 0) {
+    promos.push(`${formatTotals(month.discount).join(" + ")} por descuento de primer mes`);
+  }
+
   const openPipeline = prospects.filter(
     (p) => p.stage !== "ganado" && p.stage !== "perdido",
   ).length;
@@ -133,10 +143,10 @@ export default async function Dashboard() {
         </div>
         <Progress collected={month.collected} pending={month.pending} />
 
-        {(month.free.UYU > 0 || month.free.USD > 0) && (
+        {promos.length > 0 && (
           <p className="mt-2 text-xs text-muted">
-            No se cobra {formatTotals(month.free).join(" + ")} este mes por primer mes gratis.
-            Por eso el total de arriba no llega al MRR.
+            Este mes no se cobra {promos.join(" y ")}. Por eso el total de arriba no llega al
+            MRR.
           </p>
         )}
 

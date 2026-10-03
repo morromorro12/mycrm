@@ -50,6 +50,11 @@ export interface ClientService {
   /** Promo de cierre: el mes de `starts_on` no se cobra. */
   first_month_free: boolean;
   /**
+   * Promo de cierre con descuento: lo que se cobra el mes de `starts_on`, en
+   * vez de `amount`. null = sin descuento. Nunca junto con `first_month_free`.
+   */
+  first_month_amount: number | null;
+  /**
    * Sólo Ads: cuánto quiere invertir el cliente por mes en Meta. Es aparte de
    * `amount` (tus honorarios) y no entra en el MRR. null = sin cargar.
    */

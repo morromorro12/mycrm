@@ -111,6 +111,12 @@ pendiente/vencido, no cuenta como deuda y no lleva botón de cobro. El MRR sigue
 mostrando el monto contratado —el acuerdo vale eso— y el dashboard aclara abajo
 cuánto no se cobra este mes por promo, para que los números cierren a la vista.
 
+O el primer mes puede ir **con descuento**: cargás cuánto le cobrás ese mes y
+eso es lo que piden el botón de cobro, "Atención hoy" y el dashboard. A partir
+del segundo mes vuelve al monto normal. Igual que con el mes gratis, el MRR
+muestra el monto contratado y el dashboard aclara lo que no se cobra por el
+descuento. Cobrar 0 el primer mes es lo mismo que darlo gratis.
+
 ### Pauta de Ads
 
 Cuando un servicio es de **Ads**, el alta pide también la pauta en Meta: cuánto

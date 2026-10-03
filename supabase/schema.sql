@@ -71,6 +71,9 @@ create table if not exists client_services (
   starts_on   date          not null default current_date,
   -- Promo de cierre: el mes de starts_on no se cobra.
   first_month_free boolean  not null default false,
+  -- O con descuento: lo que se cobra el mes de starts_on en vez de amount.
+  -- null = sin descuento. Nunca junto con first_month_free.
+  first_month_amount numeric(12,2) check (first_month_amount is null or first_month_amount >= 0),
   -- Sólo Ads: la pauta en Meta. Es plata del cliente, aparte de tus
   -- honorarios (amount), así que no entra en el MRR. null = sin cargar.
   ad_budget   numeric(12,2) check (ad_budget is null or ad_budget >= 0),
@@ -162,6 +165,10 @@ alter table client_services add column if not exists ad_budget   numeric(12,2)
   check (ad_budget is null or ad_budget >= 0);
 alter table client_services add column if not exists ad_currency currency_code not null default 'USD';
 alter table client_services add column if not exists ad_card     ad_card;
+
+-- Primer mes con descuento.
+alter table client_services add column if not exists first_month_amount numeric(12,2)
+  check (first_month_amount is null or first_month_amount >= 0);
 
 -- ── updated_at automático ───────────────────────────────────────────────────
 create or replace function touch_updated_at() returns trigger

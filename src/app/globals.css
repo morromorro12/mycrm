@@ -141,6 +141,15 @@ form:has(select[name="kind"] > option[value="ads"]:checked) .ads-only {
   display: grid;
 }
 
+/* Primer mes con descuento: el monto de ese mes aparece sólo si se eligió
+   "Con descuento" en el mismo servicio. */
+.discount-only {
+  display: none;
+}
+.first-month:has(option[value="descuento"]:checked) .discount-only {
+  display: block;
+}
+
 /* El kanban scrollea de a columnas completas en el celular. */
 .snap-cols {
   scroll-snap-type: x mandatory;

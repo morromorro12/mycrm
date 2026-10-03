@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { currentPeriod, todayISO } from "./dates";
-import { isFreeMonth } from "./billing";
+import { amountDue, isFreeMonth } from "./billing";
 import { repo } from "./data";
 import type {
   AdCard,
@@ -156,6 +156,27 @@ function parseAdSpend(
   };
 }
 
+/**
+ * Primer mes: precio normal, gratis, o con descuento. El descuento es lo que
+ * se cobra ese mes; si no es menor que el precio normal, no es descuento.
+ */
+function parseFirstMonth(
+  mode: FormDataEntryValue | null,
+  value: FormDataEntryValue | null,
+  amount: number,
+) {
+  if (mode === "gratis") return { first_month_free: true, first_month_amount: null };
+  const raw = String(value ?? "").trim();
+  const n = Number(raw.replace(",", "."));
+  if (mode === "descuento" && raw && Number.isFinite(n) && n >= 0 && n < amount) {
+    // Cobrar 0 el primer mes es lo mismo que darlo gratis.
+    return n === 0
+      ? { first_month_free: true, first_month_amount: null }
+      : { first_month_free: false, first_month_amount: n };
+  }
+  return { first_month_free: false, first_month_amount: null };
+}
+
 /** Los servicios llegan como filas repetidas del form: kind[], amount[], … */
 function parseServices(fd: FormData) {
   const kinds = fd.getAll("svc_kind").map(String);
@@ -163,27 +184,28 @@ function parseServices(fd: FormData) {
   const currencies = fd.getAll("svc_currency").map(String);
   const days = fd.getAll("svc_day").map(String);
   const starts = fd.getAll("svc_starts_on").map(String);
-  // Los checkbox sin marcar no se envían, así que vienen como lista de índices.
-  const free = new Set(fd.getAll("svc_free").map(String));
 
   return kinds
-    .map((kind, i) => ({
-      kind: kind as ServiceKind,
-      amount: Number((amounts[i] ?? "0").replace(",", ".")) || 0,
-      currency: (currencies[i] || "UYU") as CurrencyCode,
-      billing_day: Math.min(31, Math.max(1, Number(days[i]) || 1)),
-      active: true,
-      starts_on: starts[i] || todayISO(),
-      first_month_free: free.has(String(i)),
-      // Sólo las filas de Ads traen estos campos, por eso van con el índice
-      // en el nombre en vez de como lista.
-      ...parseAdSpend(
-        kind as ServiceKind,
-        fd.get(`ad_budget_${i}`),
-        fd.get(`ad_currency_${i}`),
-        fd.get(`ad_card_${i}`),
-      ),
-    }))
+    .map((kind, i) => {
+      const amount = Number((amounts[i] ?? "0").replace(",", ".")) || 0;
+      return {
+        kind: kind as ServiceKind,
+        amount,
+        currency: (currencies[i] || "UYU") as CurrencyCode,
+        billing_day: Math.min(31, Math.max(1, Number(days[i]) || 1)),
+        active: true,
+        starts_on: starts[i] || todayISO(),
+        // Los campos que no están en todas las filas van con el índice en el
+        // nombre en vez de como lista.
+        ...parseFirstMonth(fd.get(`first_month_${i}`), fd.get(`first_month_amount_${i}`), amount),
+        ...parseAdSpend(
+          kind as ServiceKind,
+          fd.get(`ad_budget_${i}`),
+          fd.get(`ad_currency_${i}`),
+          fd.get(`ad_card_${i}`),
+        ),
+      };
+    })
     .filter((s) => s.kind && s.amount > 0);
 }
 
@@ -263,7 +285,7 @@ export async function addService(clientId: string, fd: FormData) {
     billing_day: Math.min(31, Math.max(1, Number(str(fd, "billing_day")) || 1)),
     active: true,
     starts_on: str(fd, "starts_on") || todayISO(),
-    first_month_free: fd.get("first_month_free") === "on",
+    ...parseFirstMonth(fd.get("first_month"), fd.get("first_month_amount"), amount),
     ...parseAdSpend(kind, fd.get("ad_budget"), fd.get("ad_currency"), fd.get("ad_card")),
   });
   refresh();
@@ -271,13 +293,14 @@ export async function addService(clientId: string, fd: FormData) {
 
 export async function updateService(id: string, fd: FormData) {
   const kind = (str(fd, "kind") || "retainer") as ServiceKind;
+  const amount = num(fd, "amount");
   await repo().updateService(id, {
     kind,
-    amount: num(fd, "amount"),
+    amount,
     currency: (str(fd, "currency") || "UYU") as CurrencyCode,
     billing_day: Math.min(31, Math.max(1, Number(str(fd, "billing_day")) || 1)),
     starts_on: str(fd, "starts_on") || todayISO(),
-    first_month_free: fd.get("first_month_free") === "on",
+    ...parseFirstMonth(fd.get("first_month"), fd.get("first_month_amount"), amount),
     ...parseAdSpend(kind, fd.get("ad_budget"), fd.get("ad_currency"), fd.get("ad_card")),
   });
   refresh();
@@ -336,7 +359,7 @@ export async function markServicePaid(clientId: string, serviceId: string) {
     clientId,
     serviceId,
     period: currentPeriod(),
-    amount: svc.amount,
+    amount: amountDue(svc), // el primer mes con descuento se cobra menos
     currency: svc.currency,
     paidAt: todayISO(),
     kind: "mensual",
@@ -366,7 +389,7 @@ export async function markClientPaid(clientId: string) {
       clientId,
       serviceId: svc.id,
       period,
-      amount: svc.amount,
+      amount: amountDue(svc),
       currency: svc.currency,
       paidAt,
       kind: "mensual",
