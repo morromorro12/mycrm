@@ -33,6 +33,15 @@ function check<T>(
         `SQL Editor de Supabase: es idempotente y no toca los datos.`,
     );
   }
+  // Lo mismo, pero con una tabla entera: 42P01 viene de Postgres, y PGRST200 /
+  // PGRST205 de la API cuando no encuentra la tabla o la relación.
+  if (["42P01", "PGRST200", "PGRST205"].includes(res.error.code ?? "")) {
+    throw new Error(
+      `${what}: la base todavía no tiene una tabla que el código espera ` +
+        `(${res.error.message}). Falta correr supabase/schema.sql en el ` +
+        `SQL Editor de Supabase: es idempotente y no toca los datos.`,
+    );
+  }
 
   throw new Error(`${what}: ${res.error.message}`);
 }
@@ -47,6 +56,9 @@ export async function pingSupabase() {
     check(await db().from(table).select("id").limit(1), `ping ${table}`);
   }
 }
+
+/** Cliente + servicios + pagos + pauta, en un solo request. */
+const CLIENT_FULL = "*, services:client_services(*), payments(*), ad_movements(*)";
 
 export const supabaseRepo: Repo = {
   mode: "supabase",
@@ -88,7 +100,7 @@ export const supabaseRepo: Repo = {
       db().from("prospects").select("*").eq("archived", true).order("business_name"),
       db()
         .from("clients")
-        .select("*, services:client_services(*), payments(*)")
+        .select(CLIENT_FULL)
         .eq("archived", true)
         .order("business_name"),
     ]);
@@ -113,10 +125,10 @@ export const supabaseRepo: Repo = {
   },
 
   async listClients() {
-    // Un solo request: cliente + sus servicios + sus pagos.
+    // Un solo request: cliente + servicios + pagos + pauta.
     const r = await db()
       .from("clients")
-      .select("*, services:client_services(*), payments(*)")
+      .select(CLIENT_FULL)
       .eq("archived", false)
       .order("business_name");
     return (check(r, "listar clientes") ?? []) as ClientFull[];
@@ -125,7 +137,7 @@ export const supabaseRepo: Repo = {
   async getClient(id) {
     const r = await db()
       .from("clients")
-      .select("*, services:client_services(*), payments(*)")
+      .select(CLIENT_FULL)
       .eq("id", id)
       .maybeSingle();
     return check(r, "leer cliente") as ClientFull | null;
@@ -223,5 +235,16 @@ export const supabaseRepo: Repo = {
       .eq("client_id", clientId)
       .order("period", { ascending: false });
     return (check(r, "listar pagos") ?? []) as Payment[];
+  },
+
+  async addAdMovement(clientId, input) {
+    check(
+      await db().from("ad_movements").insert({ ...input, client_id: clientId }),
+      "anotar movimiento de pauta",
+    );
+  },
+
+  async deleteAdMovement(id) {
+    check(await db().from("ad_movements").delete().eq("id", id), "borrar movimiento de pauta");
   },
 };

@@ -1,4 +1,4 @@
-import type { Client, ClientFull, Payment, Prospect } from "../types";
+import type { AdMovement, Client, ClientFull, Payment, Prospect } from "../types";
 import { seedClients, seedProspects } from "./seed";
 import type { ClientInput, ProspectInput, Repo, ServiceInput } from "./types";
 
@@ -96,9 +96,10 @@ export const demoRepo: Repo = {
       archived: false,
       services: services.map((s) => ({ ...s, id: id(), client_id: cid })),
       payments: [],
+      ad_movements: [],
     };
     store().clients.push(c);
-    const { services: _s, payments: _p, ...plain } = c;
+    const { services: _s, payments: _p, ad_movements: _m, ...plain } = c;
     return clone(plain as Client);
   },
 
@@ -166,5 +167,18 @@ export const demoRepo: Repo = {
   async listPayments(clientId) {
     const c = store().clients.find((x) => x.id === clientId);
     return clone((c?.payments ?? []).slice().sort((a, b) => b.period.localeCompare(a.period)));
+  },
+
+  async addAdMovement(clientId, input) {
+    const c = store().clients.find((x) => x.id === clientId);
+    if (!c) return;
+    const m: AdMovement = { ...input, id: id(), client_id: clientId };
+    c.ad_movements.push(m);
+  },
+
+  async deleteAdMovement(mid) {
+    for (const c of store().clients) {
+      c.ad_movements = c.ad_movements.filter((m) => m.id !== mid);
+    }
   },
 };

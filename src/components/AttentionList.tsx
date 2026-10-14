@@ -17,7 +17,9 @@ export function AttentionList({ items }: { items: AttentionItem[] }) {
   }
 
   return (
-    <ul className="grid gap-2">
+    // grid-cols-1 (minmax(0, 1fr)) y no `grid` a secas: si no, una fila con
+    // texto largo ensancha la columna y todas se salen de la pantalla del celular.
+    <ul className="grid grid-cols-1 gap-2">
       {items.map((item) =>
         item.kind === "client" ? (
           <ClientRow key={`c-${item.client.id}-${item.setup ? "ini" : "mes"}`} item={item} />

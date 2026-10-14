@@ -20,6 +20,12 @@ export type PaymentKind = "mensual" | "inicial";
 /** Con qué tarjeta se paga la pauta en Meta. */
 export type AdCard = "cliente" | "mia";
 
+/**
+ * Pauta con tu tarjeta: `transferencia` = el cliente te pasó plata,
+ * `gasto` = Meta te la cobró a vos.
+ */
+export type AdMovementKind = "transferencia" | "gasto";
+
 export interface Prospect {
   id: string;
   business_name: string;
@@ -96,10 +102,26 @@ export interface Client {
   archived: boolean;
 }
 
+/**
+ * Un movimiento de la pauta que pagás con tu tarjeta. No es un cobro tuyo:
+ * es plata del cliente que pasa por tus manos, así que no entra en `payments`
+ * ni en el MRR.
+ */
+export interface AdMovement {
+  id: string;
+  client_id: string;
+  kind: AdMovementKind;
+  amount: number; // siempre positivo; el signo lo da `kind`
+  currency: CurrencyCode;
+  moved_on: string; // YYYY-MM-DD
+  note: string | null;
+}
+
 /** Cliente con sus servicios y pagos ya resueltos. Lo que consumen las vistas. */
 export interface ClientFull extends Client {
   services: ClientService[];
   payments: Payment[];
+  ad_movements: AdMovement[];
 }
 
 // ── Etiquetas en español, en un solo lugar ──────────────────────────────────
@@ -144,6 +166,11 @@ export const STATUS_LABEL: Record<PaymentStatus, string> = {
 export const AD_CARD_LABEL: Record<AdCard, string> = {
   cliente: "Tarjeta del cliente",
   mia: "Mi tarjeta",
+};
+
+export const AD_MOVEMENT_LABEL: Record<AdMovementKind, string> = {
+  transferencia: "Te transfirió",
+  gasto: "Meta te cobró",
 };
 
 export const KIND_LABEL: Record<ServiceKind, string> = {

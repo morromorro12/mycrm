@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { AttentionList } from "@/components/AttentionList";
+import { AdBalanceChips } from "@/components/clients/AdAccount";
 import { PageTitle } from "@/components/ui";
+import { adOverview } from "@/lib/ad-balance";
 import {
   attentionItems,
   collectedSetups,
@@ -31,6 +33,7 @@ export default async function Dashboard() {
   const setups = pendingSetups(clients, today);
   const setupsIn = collectedSetups(clients, today);
   const ledger = globalLedger(clients, archived.clients);
+  const ads = adOverview(clients);
 
   // Lo que las promos de primer mes dejan afuera de este mes, para que se
   // entienda por qué cobrado + pendiente no llega al MRR.
@@ -191,6 +194,47 @@ export default async function Dashboard() {
         </div>
         <AttentionList items={items} />
       </section>
+
+      {/* Pauta con tu tarjeta: quién te debe plata de Meta */}
+      {ads.rows.length > 0 && (
+        <section className="card mt-3 p-4">
+          <h2 className="mb-3 text-xs font-bold uppercase tracking-wide text-muted">
+            Pauta con tu tarjeta
+          </h2>
+          <div className="grid grid-cols-2 gap-3">
+            <Stat
+              label="Te deben"
+              tone="bad"
+              totals={ads.owed}
+              empty="Nadie"
+              note={
+                ads.owing > 0
+                  ? `${ads.owing} ${ads.owing === 1 ? "cliente" : "clientes"}`
+                  : undefined
+              }
+            />
+            <Stat label="A favor de clientes" tone="ok" totals={ads.held} empty="Nada" />
+          </div>
+          <ul className="mt-3 grid grid-cols-1 gap-1 border-t border-line pt-2">
+            {ads.rows.map(({ client, balance }) => (
+              <li key={client.id}>
+                <Link
+                  href={`/clientes/${client.id}`}
+                  className="flex min-w-0 items-center justify-between gap-2 py-1"
+                >
+                  <span className="truncate text-sm font-semibold hover:underline">
+                    {client.business_name}
+                  </span>
+                  <AdBalanceChips balance={balance} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-muted">
+            Plata de los clientes para Meta: no suma al MRR ni al total cobrado.
+          </p>
+        </section>
+      )}
     </>
   );
 }
@@ -200,22 +244,30 @@ function Stat({
   totals,
   tone,
   note,
+  empty,
 }: {
   label: string;
   totals: MoneyByCurrency;
   tone: "ok" | "warn" | "bad";
   note?: string;
+  /** Qué mostrar en vez de "$U 0" cuando no hay nada. */
+  empty?: string;
 }) {
   const color = { ok: "text-ok", warn: "text-warn", bad: "text-bad" }[tone];
+  const none = totals.UYU === 0 && totals.USD === 0;
   return (
     <div>
       <p className="text-xs font-semibold text-muted">{label}</p>
       <div className="mt-0.5 grid">
-        {formatTotals(totals).map((t) => (
-          <span key={t} className={`text-lg font-extrabold tabular-nums ${color}`}>
-            {t}
-          </span>
-        ))}
+        {none && empty ? (
+          <span className="text-lg font-extrabold text-muted">{empty}</span>
+        ) : (
+          formatTotals(totals).map((t) => (
+            <span key={t} className={`text-lg font-extrabold tabular-nums ${color}`}>
+              {t}
+            </span>
+          ))
+        )}
       </div>
       {note && <p className="mt-0.5 text-xs font-semibold text-bad">{note}</p>}
     </div>

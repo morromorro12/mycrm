@@ -7,6 +7,7 @@ import { amountDue, isFreeMonth } from "./billing";
 import { repo } from "./data";
 import type {
   AdCard,
+  AdMovementKind,
   CurrencyCode,
   LeadSource,
   ProspectStage,
@@ -401,5 +402,32 @@ export async function markClientPaid(clientId: string) {
 /** Deshacer un pago mal marcado. */
 export async function deletePayment(paymentId: string) {
   await repo().deletePayment(paymentId);
+  refresh();
+}
+
+// ── Pauta con tu tarjeta ────────────────────────────────────────────────────
+
+/**
+ * Anotar plata de la pauta que pasa por tus manos: lo que el cliente te
+ * transfirió, o lo que Meta te cobró a tu tarjeta. No es un cobro tuyo, así
+ * que no toca `payments` ni el MRR.
+ */
+export async function addAdMovement(clientId: string, fd: FormData) {
+  const amount = num(fd, "amount");
+  if (amount <= 0) return;
+  const kind: AdMovementKind = str(fd, "kind") === "gasto" ? "gasto" : "transferencia";
+  await repo().addAdMovement(clientId, {
+    kind,
+    amount,
+    currency: (str(fd, "currency") || "USD") as CurrencyCode,
+    moved_on: str(fd, "moved_on") || todayISO(),
+    note: orNull(fd, "note"),
+  });
+  refresh();
+}
+
+/** Deshacer un movimiento mal anotado. */
+export async function deleteAdMovement(id: string) {
+  await repo().deleteAdMovement(id);
   refresh();
 }

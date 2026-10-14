@@ -1,4 +1,5 @@
 import type {
+  AdMovement,
   Client,
   PaymentKind,
   ClientFull,
@@ -11,6 +12,7 @@ import type {
 export type ProspectInput = Omit<Prospect, "id" | "converted_client_id" | "archived">;
 export type ClientInput = Omit<Client, "id" | "active" | "archived">;
 export type ServiceInput = Omit<ClientService, "id" | "client_id">;
+export type AdMovementInput = Omit<AdMovement, "id" | "client_id">;
 
 /**
  * Una sola interfaz de datos, dos implementaciones:
@@ -58,4 +60,8 @@ export interface Repo {
   }): Promise<void>;
   deletePayment(id: string): Promise<void>;
   listPayments(clientId: string): Promise<Payment[]>;
+
+  /** Pauta con tu tarjeta: anotar lo que te transfirió o lo que Meta te cobró. */
+  addAdMovement(clientId: string, input: AdMovementInput): Promise<void>;
+  deleteAdMovement(id: string): Promise<void>;
 }

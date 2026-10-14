@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ActionButton, SubmitButton } from "@/components/ActionButton";
+import { AdAccountSection } from "@/components/clients/AdAccount";
 import { AdSpendFields } from "@/components/clients/AdSpendFields";
 import { FirstMonthFields } from "@/components/clients/FirstMonthFields";
 import { IconCheck } from "@/components/icons";
@@ -19,6 +20,7 @@ import {
   toggleService,
   updateService,
 } from "@/lib/actions";
+import { hasAdAccount } from "@/lib/ad-balance";
 import {
   clientLedger,
   clientStatus,
@@ -179,6 +181,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           </form>
         </details>
       </section>
+
+      {/* ── Pauta con tu tarjeta ── */}
+      {hasAdAccount(client) && <AdAccountSection client={client} today={today} />}
 
       {/* ── Estado de cuenta ── */}
       <section className="card mb-3 p-4">
@@ -466,9 +471,9 @@ function AdSpendLine({ service: s }: { service: ClientService }) {
       <p className="text-xs text-muted">
         Pauta: <span className="font-semibold text-ink">{budget}</span> · {card}
       </p>
-      {s.ad_card === "mia" && (
+      {s.ad_card === "mia" && s.active && (
         <p className="text-xs font-semibold text-warn">
-          Sale de tu tarjeta: la pauta se la cobrás aparte.
+          Sale de tu tarjeta: lo que te transfiere se anota más abajo.
         </p>
       )}
     </>

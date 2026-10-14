@@ -38,6 +38,12 @@ do $$ begin
   create type ad_card as enum ('cliente','mia');
 exception when duplicate_object then null; end $$;
 
+-- Movimientos de la pauta que pagás con tu tarjeta.
+-- 'transferencia' = el cliente te pasó plata. 'gasto' = Meta te cobró a vos.
+do $$ begin
+  create type ad_movement_kind as enum ('transferencia','gasto');
+exception when duplicate_object then null; end $$;
+
 -- ── Clientes activos ────────────────────────────────────────────────────────
 create table if not exists clients (
   id            uuid primary key default gen_random_uuid(),
@@ -117,6 +123,24 @@ create unique index if not exists payments_service_period_key
 -- insertar.
 create unique index if not exists payments_setup_key
   on payments (client_id) where kind = 'inicial';
+
+-- ── Pauta con tu tarjeta ────────────────────────────────────────────────────
+-- Cuando la pauta de Meta sale de TU tarjeta, el cliente te la va
+-- transfiriendo. Esto es la cuenta corriente de esa plata: lo que te pasó
+-- menos lo que Meta te cobró. No es ingreso tuyo, así que no toca `payments`
+-- ni el MRR. Va por cliente y no por servicio: si el servicio de Ads se borra
+-- o se rearma, el saldo no se pierde.
+create table if not exists ad_movements (
+  id         uuid             primary key default gen_random_uuid(),
+  client_id  uuid             not null references clients(id) on delete cascade,
+  kind       ad_movement_kind not null,
+  amount     numeric(12,2)    not null check (amount > 0),
+  currency   currency_code    not null,
+  moved_on   date             not null default current_date,
+  note       text,
+  created_at timestamptz      not null default now()
+);
+create index if not exists ad_movements_client_idx on ad_movements (client_id, moved_on desc);
 
 -- ── Prospectos ──────────────────────────────────────────────────────────────
 create table if not exists prospects (
@@ -203,14 +227,19 @@ alter table clients         enable row level security;
 alter table client_services enable row level security;
 alter table payments        enable row level security;
 alter table prospects       enable row level security;
+alter table ad_movements    enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['clients','client_services','payments','prospects'] loop
+  foreach t in array array['clients','client_services','payments','prospects','ad_movements'] loop
     execute format('drop policy if exists %I on %I', t || '_anon_all', t);
     execute format(
       'create policy %I on %I for all to anon, authenticated using (true) with check (true)',
       t || '_anon_all', t);
   end loop;
 end $$;
+
+-- Que la API de Supabase vea enseguida las tablas nuevas (sin esto, la app
+-- puede tardar en encontrar ad_movements y fallar al leer los clientes).
+notify pgrst, 'reload schema';

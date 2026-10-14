@@ -1,5 +1,5 @@
 import { todayISO } from "../dates";
-import type { ClientFull, Payment, Prospect } from "../types";
+import type { AdMovement, ClientFull, Payment, Prospect } from "../types";
 
 /** Fecha desplazada N días respecto de hoy, como 'YYYY-MM-DD'. */
 function shift(days: number): string {
@@ -135,6 +135,15 @@ export function seedClients(): ClientFull[] {
     note: null,
   });
 
+  const move = (
+    id: string,
+    client_id: string,
+    kind: AdMovement["kind"],
+    amount: number,
+    moved_on: string,
+    note: string | null,
+  ): AdMovement => ({ id, client_id, kind, amount, currency: "USD", moved_on, note });
+
   return [
     {
       id: "c1",
@@ -159,6 +168,7 @@ export function seedClients(): ClientFull[] {
         pay("pay4", "c1", "s2", 1, 250, "USD"),
         pay("pay5", "c1", "s1", 2, 6500, "UYU"),
       ],
+      ad_movements: [],
     },
     {
       id: "c2",
@@ -176,6 +186,7 @@ export function seedClients(): ClientFull[] {
         { id: "s3", client_id: "c2", kind: "web", amount: 4200, currency: "UYU", billing_day: 1, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
       payments: [pay("pay6", "c2", "s3", 1, 4200, "UYU"), pay("pay7", "c2", "s3", 2, 4200, "UYU")],
+      ad_movements: [],
     },
     {
       id: "c3",
@@ -194,6 +205,13 @@ export function seedClients(): ClientFull[] {
         { id: "s5", client_id: "c3", kind: "ads", amount: 400, currency: "USD", billing_day: 10, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: 500, ad_currency: "USD", ad_card: "mia" },
       ],
       payments: [pay("pay8", "c3", "s4", 1, 5000, "UYU"), pay("pay9", "c3", "s5", 1, 400, "USD")],
+      // Pauta con tu tarjeta: te transfiere de a partes y Meta te cobra a vos.
+      ad_movements: [
+        move("am1", "c3", "transferencia", 500, period(1).slice(0, 8) + "03", "Pauta del mes"),
+        move("am2", "c3", "gasto", 512.3, period(0).slice(0, 8) + "01", "Cierre de Meta del mes pasado"),
+        move("am3", "c3", "transferencia", 300, shift(-4), null),
+        move("am4", "c3", "gasto", 350, shift(-1), "Umbral de facturación"),
+      ],
     },
     {
       id: "c4",
@@ -211,6 +229,7 @@ export function seedClients(): ClientFull[] {
         { id: "s6", client_id: "c4", kind: "web", amount: 3800, currency: "UYU", billing_day: 20, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
       payments: [pay("pay10", "c4", "s6", 1, 3800, "UYU")],
+      ad_movements: [],
     },
     {
       id: "c5",
@@ -228,6 +247,7 @@ export function seedClients(): ClientFull[] {
         { id: "s7", client_id: "c5", kind: "retainer", amount: 3500, currency: "UYU", billing_day: 28, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
       payments: [pay("pay11", "c5", "s7", 1, 3500, "UYU")],
+      ad_movements: [],
     },
   ];
 }

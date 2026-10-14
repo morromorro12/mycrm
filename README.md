@@ -134,8 +134,26 @@ quiere invertir el cliente por mes (con su moneda, US$ por defecto) y con qué
 tarjeta se paga, la del cliente o la tuya. La tarjeta es obligatoria en el alta.
 
 La pauta es plata del cliente, aparte de tus honorarios: **no entra en el MRR**
-ni genera cobros. Es un dato de la ficha. Si se paga con tu tarjeta, la ficha
-te recuerda que se la tenés que cobrar aparte.
+ni genera cobros.
+
+### Pauta con tu tarjeta
+
+Cuando la pauta sale de **tu** tarjeta, la ficha del cliente suma una sección
+**Pauta con tu tarjeta**: una cuenta corriente con dos tipos de movimiento.
+
+- **Me transfirió** — la plata que el cliente te pasa para la pauta
+- **Meta me cobró** — lo que Meta le cobra a tu tarjeta por ese cliente
+
+El saldo es la resta: si es negativo, pusiste de tu bolsillo y **te debe**
+(aparece en rojo, con un botón de WhatsApp que le manda las cuentas); si es
+positivo, **le quedan** esos pesos o dólares sin gastar. Cada movimiento se
+deshace con su ✕. En **Hoy**, una tarjeta al pie junta quién te debe pauta y
+cuánto.
+
+Va en su propia tabla (`ad_movements`), no en `payments`: no es ingreso tuyo,
+así que no toca el MRR, ni el total cobrado, ni el estado de pago. Pesos y
+dólares llevan saldos separados, como en todo el CRM. Si el cliente pasa a
+pagar con su tarjeta, la sección sigue hasta que el saldo quede en cero.
 
 ### Total cobrado
 
