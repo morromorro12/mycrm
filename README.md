@@ -57,6 +57,16 @@ hay que estar logueado en la cuenta de Vercel dueña del proyecto. Se entra una
 vez por dispositivo. Se saca desde el panel, en
 **Project → Settings → Deployment Protection**.
 
+### Que Supabase no se pause
+
+El plan gratis de Supabase pausa el proyecto si pasa ~7 días sin uso, y la app
+se cae con "Algo falló al leer los datos" (pasó el 2026-10-02). Para evitarlo,
+un cron de Vercel (`vercel.json`) llama a `/api/keepalive` una vez por día y
+hace tres lecturas mínimas. Se ve en **Project → Settings → Cron Jobs**.
+
+Si igual se pausa: Supabase → el proyecto → **Resume project**. Gratis, no
+toca los datos.
+
 ---
 
 ## Cómo se usa

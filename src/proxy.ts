@@ -50,6 +50,7 @@ export default function proxy(req: NextRequest) {
   );
 }
 
+// api/keepalive queda afuera: el cron de Vercel no tiene la cookie.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|api/keepalive).*)"],
 };

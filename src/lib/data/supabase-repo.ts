@@ -37,6 +37,17 @@ function check<T>(
   throw new Error(`${what}: ${res.error.message}`);
 }
 
+/**
+ * Lecturas mínimas para que Supabase vea actividad. El plan gratis pausa el
+ * proyecto tras unos 7 días sin pedidos ("unos pocos por día" alcanzan), así
+ * que se toca cada tabla una vez en vez de hacer un solo pedido.
+ */
+export async function pingSupabase() {
+  for (const table of ["clients", "prospects", "payments"]) {
+    check(await db().from(table).select("id").limit(1), `ping ${table}`);
+  }
+}
+
 export const supabaseRepo: Repo = {
   mode: "supabase",
 
