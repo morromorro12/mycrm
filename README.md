@@ -139,21 +139,24 @@ ni genera cobros.
 ### Pauta con tu tarjeta
 
 Cuando la pauta sale de **tu** tarjeta, la ficha del cliente suma una sección
-**Pauta con tu tarjeta**: una cuenta corriente con dos tipos de movimiento.
+**Pauta con tu tarjeta** con dos cosas:
 
-- **Me transfirió** — la plata que el cliente te pasa para la pauta
-- **Meta me cobró** — lo que Meta le cobra a tu tarjeta por ese cliente
+- **Transferencias** — la plata que el cliente te pasa para la pauta. Se
+  anotan de a una y se suman; cada una se deshace con su ✕.
+- **Gastado en la campaña** — un solo número: lo que lleva gastado en Meta
+  desde que la pagás vos. No se suma: cada vez que cambia, lo pisás con lo
+  que dice Meta. La ficha muestra hace cuánto lo actualizaste.
 
-El saldo es la resta: si es negativo, pusiste de tu bolsillo y **te debe**
-(aparece en rojo, con un botón de WhatsApp que le manda las cuentas); si es
-positivo, **le quedan** esos pesos o dólares sin gastar. Cada movimiento se
-deshace con su ✕. En **Hoy**, una tarjeta al pie junta quién te debe pauta y
-cuánto.
+El saldo es transferido menos gastado: si es negativo, pusiste de tu bolsillo
+y **te debe** (aparece en rojo, con un botón de WhatsApp que le manda las
+cuentas); si es positivo, **le quedan** esos pesos o dólares sin gastar. En
+**Hoy**, una tarjeta al pie junta quién te debe pauta y cuánto.
 
-Va en su propia tabla (`ad_movements`), no en `payments`: no es ingreso tuyo,
-así que no toca el MRR, ni el total cobrado, ni el estado de pago. Pesos y
-dólares llevan saldos separados, como en todo el CRM. Si el cliente pasa a
-pagar con su tarjeta, la sección sigue hasta que el saldo quede en cero.
+Las transferencias van en su propia tabla (`ad_movements`) y lo gastado en
+`clients.ad_spent`, no en `payments`: no es ingreso tuyo, así que no toca el
+MRR, ni el total cobrado, ni el estado de pago. Pesos y dólares llevan saldos
+separados, como en todo el CRM. Si el cliente pasa a pagar con su tarjeta, la
+sección sigue hasta que el saldo quede en cero.
 
 ### Total cobrado
 

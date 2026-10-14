@@ -10,7 +10,11 @@ import type {
 } from "../types";
 
 export type ProspectInput = Omit<Prospect, "id" | "converted_client_id" | "archived">;
-export type ClientInput = Omit<Client, "id" | "active" | "archived">;
+// Lo gastado en pauta se carga desde la ficha, no en el alta.
+export type ClientInput = Omit<
+  Client,
+  "id" | "active" | "archived" | "ad_spent" | "ad_spent_currency" | "ad_spent_on"
+>;
 export type ServiceInput = Omit<ClientService, "id" | "client_id">;
 export type AdMovementInput = Omit<AdMovement, "id" | "client_id">;
 
@@ -61,7 +65,7 @@ export interface Repo {
   deletePayment(id: string): Promise<void>;
   listPayments(clientId: string): Promise<Payment[]>;
 
-  /** Pauta con tu tarjeta: anotar lo que te transfirió o lo que Meta te cobró. */
+  /** Pauta con tu tarjeta: anotar o deshacer una transferencia del cliente. */
   addAdMovement(clientId: string, input: AdMovementInput): Promise<void>;
   deleteAdMovement(id: string): Promise<void>;
 }

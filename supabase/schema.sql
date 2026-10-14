@@ -38,8 +38,9 @@ do $$ begin
   create type ad_card as enum ('cliente','mia');
 exception when duplicate_object then null; end $$;
 
--- Movimientos de la pauta que pagás con tu tarjeta.
--- 'transferencia' = el cliente te pasó plata. 'gasto' = Meta te cobró a vos.
+-- Movimientos de la pauta que pagás con tu tarjeta: 'transferencia' = el
+-- cliente te pasó plata. 'gasto' quedó de la primera versión y ya no se usa:
+-- lo gastado ahora es un solo número por cliente (clients.ad_spent).
 do $$ begin
   create type ad_movement_kind as enum ('transferencia','gasto');
 exception when duplicate_object then null; end $$;
@@ -60,6 +61,12 @@ create table if not exists clients (
   setup_currency  currency_code not null default 'UYU',
   setup_due_on    date,                     -- para cuándo lo esperás (opcional)
   setup_note      text,
+  -- Pauta con tu tarjeta: lo que lleva gastado la campaña en Meta. Es UN
+  -- número que vas pisando con lo que dice Meta, no una suma de cobros.
+  -- null = sin cargar.
+  ad_spent          numeric(12,2) check (ad_spent is null or ad_spent >= 0),
+  ad_spent_currency currency_code not null default 'USD',
+  ad_spent_on       date,                   -- cuándo lo actualizaste por última vez
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now()
 );
@@ -126,8 +133,8 @@ create unique index if not exists payments_setup_key
 
 -- ── Pauta con tu tarjeta ────────────────────────────────────────────────────
 -- Cuando la pauta de Meta sale de TU tarjeta, el cliente te la va
--- transfiriendo. Esto es la cuenta corriente de esa plata: lo que te pasó
--- menos lo que Meta te cobró. No es ingreso tuyo, así que no toca `payments`
+-- transfiriendo. Acá van esas transferencias; el saldo es su suma menos lo
+-- gastado (clients.ad_spent). No es ingreso tuyo, así que no toca `payments`
 -- ni el MRR. Va por cliente y no por servicio: si el servicio de Ads se borra
 -- o se rearma, el saldo no se pierde.
 create table if not exists ad_movements (
@@ -193,6 +200,34 @@ alter table client_services add column if not exists ad_card     ad_card;
 -- Primer mes con descuento.
 alter table client_services add column if not exists first_month_amount numeric(12,2)
   check (first_month_amount is null or first_month_amount >= 0);
+
+-- Pauta con tu tarjeta: lo gastado pasa a ser un número por cliente.
+alter table clients add column if not exists ad_spent numeric(12,2)
+  check (ad_spent is null or ad_spent >= 0);
+alter table clients add column if not exists ad_spent_currency currency_code not null default 'USD';
+alter table clients add column if not exists ad_spent_on date;
+
+-- Los 'gasto' anotados con la primera versión se pasan a ese número (su suma)
+-- y recién ahí se borran, para no contarlos dos veces. Sólo si el cliente no
+-- tiene el número cargado y todos sus 'gasto' son de una misma moneda: si no,
+-- quedan como estaban. Una vez pasados no queda ninguno, así que volver a
+-- correr esto no hace nada.
+with g as (
+  select client_id, min(currency) as currency, sum(amount) as total, max(moved_on) as last_on
+  from ad_movements
+  where kind = 'gasto'
+  group by client_id
+  having count(distinct currency) = 1
+), moved as (
+  update clients c
+     set ad_spent = g.total, ad_spent_currency = g.currency, ad_spent_on = g.last_on
+    from g
+   where c.id = g.client_id and c.ad_spent is null
+  returning c.id
+)
+delete from ad_movements m
+ using moved
+ where m.client_id = moved.id and m.kind = 'gasto';
 
 -- ── updated_at automático ───────────────────────────────────────────────────
 create or replace function touch_updated_at() returns trigger

@@ -21,8 +21,9 @@ export type PaymentKind = "mensual" | "inicial";
 export type AdCard = "cliente" | "mia";
 
 /**
- * Pauta con tu tarjeta: `transferencia` = el cliente te pasó plata,
- * `gasto` = Meta te la cobró a vos.
+ * Pauta con tu tarjeta: `transferencia` = el cliente te pasó plata. `gasto`
+ * quedó de la primera versión y ya no se anota: lo gastado es un solo número
+ * por cliente (`Client.ad_spent`). Sigue acá porque es el enum de la base.
  */
 export type AdMovementKind = "transferencia" | "gasto";
 
@@ -96,6 +97,15 @@ export interface Client {
   setup_currency: CurrencyCode;
   setup_due_on: string | null;
   setup_note: string | null;
+  /**
+   * Pauta con tu tarjeta: lo que lleva gastado la campaña en Meta, desde que
+   * la pagás vos. Es UN número que se pisa con lo que dice Meta, no una suma
+   * de cobros. null = sin cargar.
+   */
+  ad_spent: number | null;
+  ad_spent_currency: CurrencyCode;
+  /** Cuándo se actualizó `ad_spent` por última vez. */
+  ad_spent_on: string | null;
   /** false = pausado: sigue siendo cliente, pero no cuenta para MRR ni cobros. */
   active: boolean;
   /** Archivado: sale de todas las listas, pero no se borra nada. */
@@ -103,9 +113,9 @@ export interface Client {
 }
 
 /**
- * Un movimiento de la pauta que pagás con tu tarjeta. No es un cobro tuyo:
- * es plata del cliente que pasa por tus manos, así que no entra en `payments`
- * ni en el MRR.
+ * Una transferencia del cliente para la pauta que pagás con tu tarjeta. No es
+ * un cobro tuyo: es plata del cliente que pasa por tus manos, así que no
+ * entra en `payments` ni en el MRR.
  */
 export interface AdMovement {
   id: string;
@@ -166,11 +176,6 @@ export const STATUS_LABEL: Record<PaymentStatus, string> = {
 export const AD_CARD_LABEL: Record<AdCard, string> = {
   cliente: "Tarjeta del cliente",
   mia: "Mi tarjeta",
-};
-
-export const AD_MOVEMENT_LABEL: Record<AdMovementKind, string> = {
-  transferencia: "Te transfirió",
-  gasto: "Meta te cobró",
 };
 
 export const KIND_LABEL: Record<ServiceKind, string> = {

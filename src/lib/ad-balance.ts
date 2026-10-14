@@ -3,13 +3,18 @@ import type { AdMovement, ClientFull, CurrencyCode } from "./types";
 
 // ============================================================================
 // Pauta con tu tarjeta. Cuando Meta le cobra la pauta de un cliente a TU
-// tarjeta, el cliente te la va transfiriendo. Esto lleva esa cuenta: lo que te
-// pasó menos lo que Meta te cobró. Es plata del cliente, no ingreso tuyo: no
-// toca el MRR, ni el total cobrado, ni el estado de pago de los honorarios.
+// tarjeta, el cliente te la va transfiriendo. Esto lleva esa cuenta: la suma
+// de lo que te pasó menos lo que lleva gastado la campaña. Lo gastado NO es
+// una suma: es un solo número que vas pisando con lo que dice Meta
+// (`ad_spent`). Es plata del cliente, no ingreso tuyo: no toca el MRR, ni el
+// total cobrado, ni el estado de pago de los honorarios.
 // ============================================================================
+
+type AdAccountFields = Pick<ClientFull, "ad_movements" | "ad_spent" | "ad_spent_currency">;
 
 export interface AdBalance {
   transferred: MoneyByCurrency;
+  /** Lo gastado, en su única moneda; la otra va en cero. */
   spent: MoneyByCurrency;
   /**
    * transferred − spent, por moneda. Positivo: tenés plata del cliente sin
@@ -23,13 +28,10 @@ export interface AdBalance {
 const cents = (n: number) => Math.round(n * 100) / 100;
 const round = (m: MoneyByCurrency): MoneyByCurrency => ({ UYU: cents(m.UYU), USD: cents(m.USD) });
 
-export function adBalance(client: Pick<ClientFull, "ad_movements">): AdBalance {
+export function adBalance(client: AdAccountFields): AdBalance {
   let transferred = ZERO;
-  let spent = ZERO;
-  for (const m of client.ad_movements) {
-    if (m.kind === "transferencia") transferred = addMoney(transferred, m.currency, m.amount);
-    else spent = addMoney(spent, m.currency, m.amount);
-  }
+  for (const m of transfers(client)) transferred = addMoney(transferred, m.currency, m.amount);
+  const spent = addMoney(ZERO, client.ad_spent_currency, client.ad_spent ?? 0);
   return {
     transferred: round(transferred),
     spent: round(spent),
@@ -52,7 +54,7 @@ export function paysAdsWithMyCard(client: ClientFull): boolean {
  */
 export function hasAdAccount(client: ClientFull): boolean {
   if (paysAdsWithMyCard(client)) return true;
-  if (client.ad_movements.length === 0) return false;
+  if (client.ad_movements.length === 0 && client.ad_spent == null) return false;
   const { balance } = adBalance(client);
   return balance.UYU !== 0 || balance.USD !== 0;
 }
@@ -62,14 +64,25 @@ export function myCardAdService(client: ClientFull) {
   return client.services.find((s) => s.active && s.kind === "ads" && s.ad_card === "mia");
 }
 
-/** Moneda con la que se anota por defecto: la de esa pauta. */
+/**
+ * Moneda con la que se anota por defecto: la de lo gastado si ya está
+ * cargado, y si no la de esa pauta.
+ */
 export function adCurrency(client: ClientFull): CurrencyCode {
+  if (client.ad_spent != null) return client.ad_spent_currency;
   return myCardAdService(client)?.ad_currency ?? "USD";
 }
 
-/** Del más nuevo al más viejo. A igual fecha, el último anotado arriba. */
-export function sortedMovements(client: ClientFull): AdMovement[] {
-  return [...client.ad_movements].reverse().sort((a, b) => b.moved_on.localeCompare(a.moved_on));
+/** Las transferencias del cliente. Los `gasto` de la primera versión no cuentan. */
+function transfers(client: Pick<ClientFull, "ad_movements">): AdMovement[] {
+  return client.ad_movements.filter((m) => m.kind === "transferencia");
+}
+
+/** Del más nuevo al más viejo. A igual fecha, la última anotada arriba. */
+export function sortedTransfers(client: ClientFull): AdMovement[] {
+  return transfers(client)
+    .reverse()
+    .sort((a, b) => b.moved_on.localeCompare(a.moved_on));
 }
 
 export interface AdOverview {

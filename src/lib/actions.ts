@@ -7,7 +7,6 @@ import { amountDue, isFreeMonth } from "./billing";
 import { repo } from "./data";
 import type {
   AdCard,
-  AdMovementKind,
   CurrencyCode,
   LeadSource,
   ProspectStage,
@@ -408,16 +407,14 @@ export async function deletePayment(paymentId: string) {
 // ── Pauta con tu tarjeta ────────────────────────────────────────────────────
 
 /**
- * Anotar plata de la pauta que pasa por tus manos: lo que el cliente te
- * transfirió, o lo que Meta te cobró a tu tarjeta. No es un cobro tuyo, así
- * que no toca `payments` ni el MRR.
+ * Anotar plata que el cliente te transfirió para la pauta. No es un cobro
+ * tuyo, así que no toca `payments` ni el MRR.
  */
 export async function addAdMovement(clientId: string, fd: FormData) {
   const amount = num(fd, "amount");
   if (amount <= 0) return;
-  const kind: AdMovementKind = str(fd, "kind") === "gasto" ? "gasto" : "transferencia";
   await repo().addAdMovement(clientId, {
-    kind,
+    kind: "transferencia",
     amount,
     currency: (str(fd, "currency") || "USD") as CurrencyCode,
     moved_on: str(fd, "moved_on") || todayISO(),
@@ -426,8 +423,24 @@ export async function addAdMovement(clientId: string, fd: FormData) {
   refresh();
 }
 
-/** Deshacer un movimiento mal anotado. */
+/** Deshacer una transferencia mal anotada. */
 export async function deleteAdMovement(id: string) {
   await repo().deleteAdMovement(id);
+  refresh();
+}
+
+/**
+ * Lo que lleva gastado la campaña. Se PISA con lo que dice Meta, no se suma:
+ * así no hay que llevar la cuenta de cada cobro. Vacío = sin cargar.
+ */
+export async function saveAdSpent(clientId: string, fd: FormData) {
+  const raw = str(fd, "ad_spent");
+  const n = Number(raw.replace(",", "."));
+  if (raw && !(Number.isFinite(n) && n >= 0)) return; // no borrar el número por un typo
+  await repo().updateClient(clientId, {
+    ad_spent: raw ? n : null,
+    ad_spent_currency: (str(fd, "ad_spent_currency") || "USD") as CurrencyCode,
+    ad_spent_on: raw ? todayISO() : null,
+  });
   refresh();
 }

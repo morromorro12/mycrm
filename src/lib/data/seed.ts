@@ -138,11 +138,10 @@ export function seedClients(): ClientFull[] {
   const move = (
     id: string,
     client_id: string,
-    kind: AdMovement["kind"],
     amount: number,
     moved_on: string,
     note: string | null,
-  ): AdMovement => ({ id, client_id, kind, amount, currency: "USD", moved_on, note });
+  ): AdMovement => ({ id, client_id, kind: "transferencia", amount, currency: "USD", moved_on, note });
 
   return [
     {
@@ -157,6 +156,9 @@ export function seedClients(): ClientFull[] {
       setup_currency: "UYU",
       setup_due_on: shift(-3),
       setup_note: "Armado del sitio + integración de pedidos a WhatsApp.",
+      ad_spent: null,
+      ad_spent_currency: "USD",
+      ad_spent_on: null,
       services: [
         { id: "s1", client_id: "c1", kind: "retainer", amount: 6500, currency: "UYU", billing_day: 5, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
         { id: "s2", client_id: "c1", kind: "ads", amount: 250, currency: "USD", billing_day: 5, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: 300, ad_currency: "USD", ad_card: "cliente" },
@@ -182,6 +184,9 @@ export function seedClients(): ClientFull[] {
       setup_currency: "UYU",
       setup_due_on: null,
       setup_note: null,
+      ad_spent: null,
+      ad_spent_currency: "USD",
+      ad_spent_on: null,
       services: [
         { id: "s3", client_id: "c2", kind: "web", amount: 4200, currency: "UYU", billing_day: 1, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
@@ -200,17 +205,19 @@ export function seedClients(): ClientFull[] {
       setup_currency: "UYU",
       setup_due_on: null,
       setup_note: null,
+      ad_spent: 862.3,
+      ad_spent_currency: "USD",
+      ad_spent_on: shift(-1),
       services: [
         { id: "s4", client_id: "c3", kind: "retainer", amount: 5000, currency: "UYU", billing_day: 10, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
         { id: "s5", client_id: "c3", kind: "ads", amount: 400, currency: "USD", billing_day: 10, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: 500, ad_currency: "USD", ad_card: "mia" },
       ],
       payments: [pay("pay8", "c3", "s4", 1, 5000, "UYU"), pay("pay9", "c3", "s5", 1, 400, "USD")],
-      // Pauta con tu tarjeta: te transfiere de a partes y Meta te cobra a vos.
+      // Pauta con tu tarjeta: te transfiere de a partes, y la campaña ya gastó
+      // más de lo que te pasó (ver ad_spent arriba).
       ad_movements: [
-        move("am1", "c3", "transferencia", 500, period(1).slice(0, 8) + "03", "Pauta del mes"),
-        move("am2", "c3", "gasto", 512.3, period(0).slice(0, 8) + "01", "Cierre de Meta del mes pasado"),
-        move("am3", "c3", "transferencia", 300, shift(-4), null),
-        move("am4", "c3", "gasto", 350, shift(-1), "Umbral de facturación"),
+        move("am1", "c3", 500, period(1).slice(0, 8) + "03", "Pauta del mes"),
+        move("am2", "c3", 300, shift(-4), null),
       ],
     },
     {
@@ -225,6 +232,9 @@ export function seedClients(): ClientFull[] {
       setup_currency: "UYU",
       setup_due_on: null,
       setup_note: null,
+      ad_spent: null,
+      ad_spent_currency: "USD",
+      ad_spent_on: null,
       services: [
         { id: "s6", client_id: "c4", kind: "web", amount: 3800, currency: "UYU", billing_day: 20, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],
@@ -243,6 +253,9 @@ export function seedClients(): ClientFull[] {
       setup_currency: "UYU",
       setup_due_on: null,
       setup_note: null,
+      ad_spent: null,
+      ad_spent_currency: "USD",
+      ad_spent_on: null,
       services: [
         { id: "s7", client_id: "c5", kind: "retainer", amount: 3500, currency: "UYU", billing_day: 28, active: true, starts_on: period(6), first_month_free: false, first_month_amount: null, ad_budget: null, ad_currency: "USD", ad_card: null },
       ],

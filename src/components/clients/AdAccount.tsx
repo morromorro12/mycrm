@@ -1,16 +1,16 @@
 import { ActionButton, SubmitButton } from "@/components/ActionButton";
 import { WhatsAppButton } from "@/components/ui";
-import { addAdMovement, deleteAdMovement } from "@/lib/actions";
+import { addAdMovement, deleteAdMovement, saveAdSpent } from "@/lib/actions";
 import {
   adBalance,
   adCurrency,
   myCardAdService,
   paysAdsWithMyCard,
-  sortedMovements,
+  sortedTransfers,
 } from "@/lib/ad-balance";
-import { shortDate } from "@/lib/dates";
+import { relativeDay, shortDate } from "@/lib/dates";
 import { formatMoney, formatTotals, type MoneyByCurrency } from "@/lib/money";
-import { AD_MOVEMENT_LABEL, type ClientFull, type CurrencyCode } from "@/lib/types";
+import type { ClientFull, CurrencyCode } from "@/lib/types";
 
 const CURRENCIES: CurrencyCode[] = ["USD", "UYU"];
 
@@ -40,21 +40,23 @@ export function AdBalanceChips({ balance }: { balance: MoneyByCurrency }) {
 }
 
 /**
- * La pauta que sale de tu tarjeta: lo que el cliente te va transfiriendo y lo
- * que Meta te va cobrando, con el saldo entre los dos. Va en la ficha, debajo
- * de los servicios.
+ * La pauta que sale de tu tarjeta: lo que el cliente te va transfiriendo,
+ * lo que lleva gastado la campaña, y el saldo entre los dos. Va en la ficha,
+ * debajo de los servicios.
  */
 export function AdAccountSection({ client, today }: { client: ClientFull; today: string }) {
   const { transferred, spent, balance } = adBalance(client);
-  const movements = sortedMovements(client);
+  const list = sortedTransfers(client);
   const svc = myCardAdService(client);
+  const cur = adCurrency(client);
   const owed = CURRENCIES.filter((c) => balance[c] < 0);
+  const started = list.length > 0 || client.ad_spent != null;
 
   // El mensaje para pedirle lo que falta, con las cuentas a la vista.
   const ask =
     owed.length > 0
       ? `Hola${client.contact_name ? ` ${client.contact_name}` : ""}! Te paso cómo viene la pauta de Meta: ` +
-        `me transferiste ${formatTotals(transferred).join(" + ")} y Meta me cobró ` +
+        `me transferiste ${formatTotals(transferred).join(" + ")} y la campaña lleva gastado ` +
         `${formatTotals(spent).join(" + ")}, así que quedan ` +
         `${owed.map((c) => formatMoney(-balance[c], c)).join(" y ")} pendientes.`
       : undefined;
@@ -65,15 +67,15 @@ export function AdAccountSection({ client, today }: { client: ClientFull; today:
         Pauta con tu tarjeta
       </h2>
 
-      {movements.length === 0 ? (
+      {!started ? (
         <p className="text-sm text-muted">
-          Meta le cobra la pauta de este cliente a tu tarjeta. Anotá acá lo que te
-          transfiere y lo que te cobra Meta, y te queda el saldo a la vista.
+          Meta le cobra la pauta de este cliente a tu tarjeta. Anotá lo que te
+          transfiere y cuánto lleva gastado la campaña, y te queda el saldo a la vista.
         </p>
       ) : (
         <>
           <div className="grid gap-0.5">
-            {(nonZero(balance).length ? nonZero(balance) : [adCurrency(client)]).map((c) => (
+            {(nonZero(balance).length ? nonZero(balance) : [cur]).map((c) => (
               <p key={c} className="flex flex-wrap items-baseline gap-x-2">
                 <span
                   className={`text-2xl font-extrabold tabular-nums ${
@@ -89,7 +91,7 @@ export function AdAccountSection({ client, today }: { client: ClientFull; today:
             ))}
           </div>
           <p className="mt-1 text-xs text-muted">
-            Te transfirió {formatTotals(transferred).join(" + ")} · Meta te cobró{" "}
+            Te transfirió {formatTotals(transferred).join(" + ")} · Gastado{" "}
             {formatTotals(spent).join(" + ")}
           </p>
         </>
@@ -110,33 +112,56 @@ export function AdAccountSection({ client, today }: { client: ClientFull; today:
         <WhatsAppButton phone={client.phone} text={ask} className="mt-2.5 w-full md:w-auto" />
       )}
 
+      {/* Lo gastado: un solo número que se pisa, no una lista que se suma.
+          La key rearma el form al guardar, para que la moneda no vuelva a la
+          que tenía al montarse. */}
+      <form
+        key={`${client.ad_spent}|${client.ad_spent_currency}`}
+        action={saveAdSpent.bind(null, client.id)}
+        className="mt-3 rounded-xl border border-line p-3"
+      >
+        <label htmlFor={`ad-spent-${client.id}`} className="label">
+          Gastado en la campaña
+        </label>
+        <div className="flex gap-2">
+          <input
+            id={`ad-spent-${client.id}`}
+            name="ad_spent"
+            type="number"
+            min={0}
+            step="0.01"
+            inputMode="decimal"
+            defaultValue={client.ad_spent ?? ""}
+            placeholder="0"
+            className="field min-w-0 flex-1 tabular-nums"
+          />
+          <select
+            name="ad_spent_currency"
+            defaultValue={cur}
+            aria-label="Moneda de lo gastado"
+            className="field !w-auto"
+          >
+            <option value="USD">US$</option>
+            <option value="UYU">$U</option>
+          </select>
+          <SubmitButton className="btn btn-primary shrink-0" pendingLabel="…">
+            Guardar
+          </SubmitButton>
+        </div>
+        <p className="mt-1.5 text-xs text-muted">
+          El total desde que la pagás vos. Cuando cambie en Meta, poné el número
+          nuevo: reemplaza al anterior, no se suma.
+          {client.ad_spent_on && ` Actualizado ${relativeDay(client.ad_spent_on, today)}.`}
+        </p>
+      </form>
+
       <details className="mt-3">
         <summary className="cursor-pointer text-sm font-semibold text-brand">
-          + Anotar transferencia o cobro de Meta
+          + Anotar transferencia
         </summary>
         <form action={addAdMovement.bind(null, client.id)} className="mt-2 grid grid-cols-2 gap-2">
-          <fieldset className="col-span-2">
-            <legend className="label">¿Qué pasó?</legend>
-            <div className="grid grid-cols-2 gap-2">
-              {(["transferencia", "gasto"] as const).map((k) => (
-                <label
-                  key={k}
-                  className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-2 text-sm has-[:checked]:border-brand has-[:checked]:font-semibold"
-                >
-                  <input
-                    type="radio"
-                    name="kind"
-                    value={k}
-                    defaultChecked={k === "transferencia"}
-                    className="h-4 w-4"
-                  />
-                  {k === "transferencia" ? "Me transfirió" : "Meta me cobró"}
-                </label>
-              ))}
-            </div>
-          </fieldset>
           <label>
-            <span className="label">Monto</span>
+            <span className="label">Te transfirió</span>
             <input
               name="amount"
               type="number"
@@ -150,7 +175,7 @@ export function AdAccountSection({ client, today }: { client: ClientFull; today:
           </label>
           <label>
             <span className="label">Moneda</span>
-            <select name="currency" defaultValue={adCurrency(client)} className="field">
+            <select name="currency" defaultValue={cur} className="field">
               <option value="USD">US$ (dólares)</option>
               <option value="UYU">$U (pesos)</option>
             </select>
@@ -161,7 +186,7 @@ export function AdAccountSection({ client, today }: { client: ClientFull; today:
           </label>
           <label className="col-span-2">
             <span className="label">Nota (opcional)</span>
-            <input name="note" placeholder="Transferencia BROU, cierre de Meta…" className="field" />
+            <input name="note" placeholder="Transferencia BROU, Mi Dinero…" className="field" />
           </label>
           <div className="col-span-2">
             <SubmitButton className="btn btn-primary w-full" pendingLabel="Anotando…">
@@ -174,37 +199,33 @@ export function AdAccountSection({ client, today }: { client: ClientFull; today:
         </p>
       </details>
 
-      {movements.length > 0 && (
+      {list.length > 0 && (
         <>
           <h3 className="mb-2 mt-4 text-xs font-bold uppercase tracking-wide text-muted">
-            Movimientos
+            Transferencias
           </h3>
           <ul className="grid gap-1.5">
-            {movements.map((m) => (
+            {list.map((m) => (
               <li
                 key={m.id}
                 className="flex min-w-0 items-center justify-between gap-2 rounded-lg bg-bg px-2.5 py-2"
               >
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{AD_MOVEMENT_LABEL[m.kind]}</p>
+                  <p className="truncate text-sm font-semibold">Te transfirió</p>
                   <p className="truncate text-xs text-muted">
                     {shortDate(m.moved_on)}
                     {m.note ? ` · ${m.note}` : ""}
                   </p>
                 </div>
-                <span
-                  className={`shrink-0 text-sm font-bold tabular-nums ${
-                    m.kind === "transferencia" ? "text-ok" : ""
-                  }`}
-                >
-                  {m.kind === "transferencia" ? "+" : "−"} {formatMoney(m.amount, m.currency)}
+                <span className="shrink-0 text-sm font-bold tabular-nums text-ok">
+                  + {formatMoney(m.amount, m.currency)}
                 </span>
                 <ActionButton
                   action={deleteAdMovement.bind(null, m.id)}
                   className="btn !min-h-[1.9rem] !px-2 !text-xs text-muted"
-                  confirm="¿Borrar este movimiento de la pauta?"
+                  confirm="¿Borrar esta transferencia?"
                   pendingLabel="…"
-                  title="Deshacer este movimiento"
+                  title="Deshacer esta transferencia"
                 >
                   ✕
                 </ActionButton>
