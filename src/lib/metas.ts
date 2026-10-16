@@ -1,0 +1,248 @@
+import { addDays, isWeekend, localDay, todayISO } from "./dates";
+import type { Prospect } from "./types";
+
+// ============================================================================
+// Metas estilo Clash of Clans. Nada se marca a mano: todo sale de lo que ya
+// está cargado (prospectos, y lo cobrado en pesos para la meta final), así que
+// no hay tablas nuevas. Son ACCIONES que dependen de vos — contactar negocios —
+// y no resultados como cerrar clientes, que llegan solos a partir de eso.
+// ============================================================================
+
+/** Negocios nuevos por día. */
+export const DAILY_TARGET = 10;
+
+/** La meta final, sólo en pesos: lo cobrado en dólares no suma acá. */
+export const MILLION_UYU = 1_000_000;
+const MILLION_STEPS = [100_000, 250_000, 500_000, MILLION_UYU];
+
+interface TrackDef {
+  id: string;
+  title: string;
+  /** El objetivo de un escalón: "Contactar 50 negocios". */
+  goal: (n: number) => string;
+  tiers: number[];
+}
+
+const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
+
+const TRACKS: TrackDef[] = [
+  {
+    id: "contactados",
+    title: "Negocios contactados",
+    goal: (n) => `Contactar ${n} negocios`,
+    tiers: [10, 25, 50, 100, 250, 500, 1000],
+  },
+  {
+    id: "dias",
+    title: "Días con la meta cumplida",
+    goal: (n) => `Cumplir la meta diaria ${n} ${plural(n, "día", "días")}`,
+    tiers: [1, 3, 7, 15, 30, 60, 100],
+  },
+  {
+    id: "racha",
+    title: "Mejor racha",
+    goal: (n) => `Racha de ${n} días seguidos`,
+    tiers: [2, 3, 5, 10, 20, 40, 60],
+  },
+  {
+    id: "referidos",
+    title: "Referidos",
+    goal: (n) => `Conseguir ${n} ${plural(n, "referido", "referidos")}`,
+    tiers: [1, 3, 5, 10, 25, 50],
+  },
+];
+
+/**
+ * Rangos por estrellas. El último nivel, Millonario, no se gana con
+ * estrellas: sólo llegando a $U 1.000.000 cobrados. Si se suman objetivos
+ * nuevos (y con ellos estrellas), estos cortes se pueden estirar.
+ */
+const RANKS = [
+  { name: "Novato", stars: 0 },
+  { name: "Vendedor", stars: 2 },
+  { name: "Cazador", stars: 5 },
+  { name: "Imparable", stars: 9 },
+  { name: "Agencia", stars: 14 },
+  { name: "Empresario", stars: 19 },
+  { name: "Magnate", stars: 24 },
+];
+const MILLIONAIRE = "Millonario";
+
+export interface TrackProgress {
+  id: string;
+  title: string;
+  value: number;
+  tiers: number[];
+  /** Escalones pasados = estrellas ganadas en este objetivo. */
+  stars: number;
+  /** El próximo escalón, o null si está completo. */
+  next: number | null;
+  nextGoal: string | null;
+}
+
+export interface Unlocked {
+  /** Estable entre visitas: es lo que se guarda como "ya festejado". */
+  key: string;
+  label: string;
+}
+
+export interface Metas {
+  today: {
+    count: number;
+    target: number;
+    done: boolean;
+    /** Lo anotado hoy, lo último primero. */
+    prospects: Prospect[];
+  };
+  streak: { current: number; best: number };
+  tracks: TrackProgress[];
+  stars: number;
+  maxStars: number;
+  level: {
+    n: number;
+    name: string;
+    /** Rango siguiente; null si ya sos Millonario. */
+    nextName: string | null;
+    /** Estrellas que faltan para el siguiente; null si el siguiente es por plata. */
+    starsToNext: number | null;
+    /** Cuánto del camino al siguiente nivel hiciste, 0–100. */
+    pct: number;
+  };
+  million: {
+    collected: number;
+    /** Próximo hito en el camino al millón; null si ya llegaste. */
+    next: number | null;
+  };
+  unlocked: Unlocked[];
+}
+
+/**
+ * Día por día, cuántos negocios anotaste. Cuenta también los archivados y los
+ * que ya son clientes: archivar no te hace perder progreso.
+ */
+function byDay(prospects: Prospect[]): Map<string, Prospect[]> {
+  const days = new Map<string, Prospect[]>();
+  for (const p of prospects) {
+    if (!p.created_at) continue;
+    const d = localDay(p.created_at);
+    days.set(d, [...(days.get(d) ?? []), p]);
+  }
+  return days;
+}
+
+/**
+ * Racha de días cumpliendo la meta. Los fines de semana suman si los
+ * cumplís, pero no la cortan si no. Hoy tampoco la corta mientras no termine.
+ */
+function streaks(metDays: Set<string>, today: string): { current: number; best: number } {
+  if (metDays.size === 0) return { current: 0, best: 0 };
+
+  let day = [...metDays].sort()[0];
+  let current = 0;
+  let best = 0;
+  for (; day <= today; day = addDays(day, 1)) {
+    if (metDays.has(day)) current++;
+    else if (day !== today && !isWeekend(day)) current = 0;
+    best = Math.max(best, current);
+  }
+  return { current, best };
+}
+
+export function metas(
+  prospects: Prospect[],
+  collectedUYU: number,
+  today = todayISO(),
+): Metas {
+  const days = byDay(prospects);
+  const todays = [...(days.get(today) ?? [])].sort((a, b) =>
+    b.created_at.localeCompare(a.created_at),
+  );
+  const metDays = new Set(
+    [...days].filter(([, list]) => list.length >= DAILY_TARGET).map(([d]) => d),
+  );
+  const streak = streaks(metDays, today);
+
+  const values: Record<string, number> = {
+    contactados: prospects.length,
+    dias: metDays.size,
+    racha: streak.best,
+    referidos: prospects.filter((p) => p.source === "referido").length,
+  };
+
+  // En el orden en que se festejan: el día, los logros y, al final, el nivel.
+  const unlocked: Unlocked[] = [];
+  const done = todays.length >= DAILY_TARGET;
+  if (done) {
+    unlocked.push({
+      key: `dia:${today}`,
+      label: `Meta del día cumplida: ${DAILY_TARGET} negocios contactados`,
+    });
+  }
+
+  const tracks = TRACKS.map((t): TrackProgress => {
+    const value = values[t.id];
+    const reached = t.tiers.filter((n) => value >= n);
+    for (const n of reached) unlocked.push({ key: `${t.id}:${n}`, label: t.goal(n) });
+    const next = t.tiers.find((n) => value < n) ?? null;
+    return {
+      id: t.id,
+      title: t.title,
+      value,
+      tiers: t.tiers,
+      stars: reached.length,
+      next,
+      nextGoal: next === null ? null : t.goal(next),
+    };
+  });
+
+  const stars = tracks.reduce((sum, t) => sum + t.stars, 0);
+  const maxStars = TRACKS.reduce((sum, t) => sum + t.tiers.length, 0);
+
+  const millionaire = collectedUYU >= MILLION_UYU;
+  const rankIdx = RANKS.findLastIndex((r) => stars >= r.stars);
+  const rank = RANKS[rankIdx];
+  const nextRank = RANKS[rankIdx + 1];
+  const level = millionaire
+    ? { n: RANKS.length + 1, name: MILLIONAIRE, nextName: null, starsToNext: null, pct: 100 }
+    : {
+        n: rankIdx + 1,
+        name: rank.name,
+        nextName: nextRank?.name ?? MILLIONAIRE,
+        starsToNext: nextRank ? nextRank.stars - stars : null,
+        // Del último rango a Millonario se avanza con plata, no con estrellas.
+        pct: Math.floor(
+          nextRank
+            ? ((stars - rank.stars) / (nextRank.stars - rank.stars)) * 100
+            : (collectedUYU / MILLION_UYU) * 100,
+        ),
+      };
+  if (level.n > 1) {
+    unlocked.push({ key: `nivel:${level.n}`, label: `Subiste a nivel ${level.n}: ${level.name}` });
+  }
+
+  return {
+    today: { count: todays.length, target: DAILY_TARGET, done, prospects: todays },
+    streak,
+    tracks,
+    stars,
+    maxStars,
+    level,
+    million: {
+      collected: collectedUYU,
+      next: MILLION_STEPS.find((n) => collectedUYU < n) ?? null,
+    },
+    unlocked,
+  };
+}
+
+/** Para no anotar dos veces el mismo negocio: sin tildes, mayúsculas ni espacios de más. */
+export function sameBusiness(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s
+      .normalize("NFD")
+      .replace(/[̀-ͯ]/g, "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  return norm(a) === norm(b);
+}

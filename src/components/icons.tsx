@@ -32,6 +32,20 @@ export const IconAds = ({ className = base }: P) => (
   </svg>
 );
 
+export const IconGoals = ({ className = base }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" strokeLinejoin="round" />
+    <path d="M7 6H4.5v1.5A3.5 3.5 0 0 0 8 11M17 6h2.5v1.5A3.5 3.5 0 0 1 16 11M12 14v3M8.5 20h7M10 17h4v3h-4z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Estrella de logro: llena si está ganada, sólo el borde si no. */
+export const IconStar = ({ className = base, filled = false }: P & { filled?: boolean }) => (
+  <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9L12 3Z" strokeLinejoin="round" />
+  </svg>
+);
+
 export const IconSearch = ({ className = base }: P) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
     <circle cx="11" cy="11" r="6.5" />

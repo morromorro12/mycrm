@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { AttentionList } from "@/components/AttentionList";
 import { AdBalanceChips } from "@/components/clients/AdAccount";
+import { MetasCard } from "@/components/metas/parts";
 import { PageTitle } from "@/components/ui";
 import { adOverview } from "@/lib/ad-balance";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@/lib/billing";
 import { repo } from "@/lib/data";
 import { currentPeriod, periodLabel, todayISO } from "@/lib/dates";
+import { metas } from "@/lib/metas";
 import { formatMoney, formatTotals, type MoneyByCurrency } from "@/lib/money";
 import type { CurrencyCode } from "@/lib/types";
 
@@ -34,6 +36,7 @@ export default async function Dashboard() {
   const setupsIn = collectedSetups(clients, today);
   const ledger = globalLedger(clients, archived.clients);
   const ads = adOverview(clients);
+  const goals = metas([...prospects, ...archived.prospects], ledger.total.UYU, today);
 
   // Lo que las promos de primer mes dejan afuera de este mes, para que se
   // entienda por qué cobrado + pendiente no llega al MRR.
@@ -59,6 +62,9 @@ export default async function Dashboard() {
           activos === 1 ? "cliente activo" : "clientes activos"
         }`}
       />
+
+      {/* La meta del día: lo que hay que hacer cuando no sabés qué hacer. */}
+      <MetasCard m={goals} />
 
       {/* MRR — el número grande */}
       <section className="card mb-3 p-4">

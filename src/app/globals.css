@@ -150,6 +150,18 @@ form:has(select[name="kind"] > option[value="ads"]:checked) .ads-only {
   display: block;
 }
 
+/* El festejo de un logro entra con un pequeño salto. */
+@keyframes pop {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.pop {
+  animation: pop 0.35s ease-out;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pop { animation: none; }
+}
+
 /* El kanban scrollea de a columnas completas en el celular. */
 .snap-cols {
   scroll-snap-type: x mandatory;

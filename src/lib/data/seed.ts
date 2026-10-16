@@ -21,7 +21,7 @@ function thisMonth(day: number): string {
 // Datos de ejemplo para el MODO DEMO. Las fechas son relativas a hoy, así que
 // el dashboard siempre muestra algo vivo en "Atención hoy".
 export function seedProspects(): Prospect[] {
-  return [
+  const rows: Omit<Prospect, "created_at">[] = [
     {
       id: "p1",
       business_name: "Parrilla El Fogón",
@@ -113,6 +113,12 @@ export function seedProspects(): Prospect[] {
       archived: false,
     },
   ];
+  // Mediodía en Montevideo de cada día; los dos últimos, anotados hoy.
+  const createdDaysAgo = [20, 14, 10, 6, 0, 0];
+  return rows.map((p, i) => ({
+    ...p,
+    created_at: `${shift(-createdDaysAgo[i])}T15:00:00.000Z`,
+  }));
 }
 
 export function seedClients(): ClientFull[] {

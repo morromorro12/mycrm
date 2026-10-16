@@ -39,7 +39,13 @@ export const demoRepo: Repo = {
   },
 
   async createProspect(input: ProspectInput) {
-    const p: Prospect = { ...input, id: id(), converted_client_id: null, archived: false };
+    const p: Prospect = {
+      ...input,
+      id: id(),
+      converted_client_id: null,
+      archived: false,
+      created_at: new Date().toISOString(),
+    };
     store().prospects.unshift(p);
     return clone(p);
   },

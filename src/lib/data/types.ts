@@ -9,7 +9,10 @@ import type {
   Prospect,
 } from "../types";
 
-export type ProspectInput = Omit<Prospect, "id" | "converted_client_id" | "archived">;
+export type ProspectInput = Omit<
+  Prospect,
+  "id" | "converted_client_id" | "archived" | "created_at"
+>;
 // Lo gastado en pauta se carga desde la ficha, no en el alta.
 export type ClientInput = Omit<
   Client,

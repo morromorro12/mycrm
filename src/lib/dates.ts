@@ -4,15 +4,37 @@
 
 export const TZ = "America/Montevideo";
 
+// 'en-CA' formatea justo como YYYY-MM-DD.
+const DAY_FMT = new Intl.DateTimeFormat("en-CA", {
+  timeZone: TZ,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 /** Hoy en Montevideo, como 'YYYY-MM-DD'. */
 export function todayISO(): string {
-  // 'en-CA' formatea justo como YYYY-MM-DD.
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TZ,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
+  return DAY_FMT.format(new Date());
+}
+
+/**
+ * El día uruguayo de un timestamp de la base: '2026-10-17T01:30:00Z' →
+ * '2026-10-16', porque en Montevideo todavía eran las 22:30.
+ */
+export function localDay(timestamp: string): string {
+  return DAY_FMT.format(new Date(timestamp));
+}
+
+/** Fecha corrida N días: addDays('2026-10-16', -1) → '2026-10-15'. */
+export function addDays(iso: string, days: number): string {
+  const t = Date.parse(`${iso}T00:00:00Z`) + days * 86_400_000;
+  return new Date(t).toISOString().slice(0, 10);
+}
+
+/** Sábado o domingo. */
+export function isWeekend(iso: string): boolean {
+  const d = new Date(`${iso}T12:00:00Z`).getUTCDay();
+  return d === 0 || d === 6;
 }
 
 /** Primer día del mes de una fecha: '2026-09-17' → '2026-09-01'. */

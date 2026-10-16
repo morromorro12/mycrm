@@ -42,6 +42,11 @@ export interface Prospect {
   converted_client_id: string | null;
   /** Archivado: sale de todas las listas, pero no se borra nada. */
   archived: boolean;
+  /**
+   * Cuándo se anotó (timestamp, lo pone la base). Es lo que cuenta para la
+   * meta diaria de negocios contactados.
+   */
+  created_at: string;
 }
 
 export interface ClientService {

@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { IconAds, IconClients, IconPipeline, IconToday } from "./icons";
+import { IconAds, IconClients, IconGoals, IconPipeline, IconToday } from "./icons";
 
 const TABS = [
   { href: "/", label: "Hoy", Icon: IconToday },
+  { href: "/metas", label: "Metas", Icon: IconGoals },
   { href: "/pipeline", label: "Pipeline", Icon: IconPipeline },
   { href: "/clientes", label: "Clientes", Icon: IconClients },
   { href: "/anuncios", label: "Anuncios", Icon: IconAds },
@@ -23,7 +24,7 @@ export function BottomTabs() {
       className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface md:hidden"
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
     >
-      <ul className="grid grid-cols-4">
+      <ul className="grid grid-cols-5">
         {TABS.map(({ href, label, Icon }) => {
           const active = isActive(pathname, href);
           return (
