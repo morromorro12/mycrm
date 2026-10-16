@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { Celebration } from "@/components/metas/Celebration";
-import { QuickContact } from "@/components/metas/QuickContact";
+import { ColdCounter } from "@/components/metas/ColdCounter";
 import { Bar, Stars } from "@/components/metas/parts";
 import { PageTitle } from "@/components/ui";
 import { globalLedger } from "@/lib/billing";
@@ -12,17 +11,16 @@ export const dynamic = "force-dynamic";
 
 export default async function MetasPage() {
   const r = repo();
-  const [prospects, clients, archived] = await Promise.all([
-    r.listProspects(),
+  const [cold, clients, archived] = await Promise.all([
+    r.listColdContacts(),
     r.listClients(),
     r.listArchived(),
   ]);
 
-  // Archivados incluidos: archivar no te hace perder progreso ni plata cobrada.
+  // Archivados incluidos: la plata cobrada no se evapora al archivar.
   const ledger = globalLedger(clients, archived.clients);
-  const m = metas([...prospects, ...archived.prospects], ledger.total.UYU);
+  const m = metas(cold, ledger.total.UYU);
   const { today, level, million } = m;
-  const left = today.target - today.count;
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -43,48 +41,7 @@ export default async function MetasPage() {
             </span>
           )}
         </div>
-        <p className="mt-1 text-3xl font-extrabold tabular-nums">
-          {today.count}
-          <span className="text-base font-bold text-muted">
-            {" "}
-            / {today.target} negocios contactados
-          </span>
-        </p>
-        <div className="mt-2">
-          <Bar
-            pct={(today.count / today.target) * 100}
-            tone={today.done ? "ok" : "brand"}
-            label="Meta del día"
-            thick
-          />
-        </div>
-        <p className={`mt-2 text-sm font-semibold ${today.done ? "text-ok" : "text-muted"}`}>
-          {today.done
-            ? "¡Cumplida! Lo que sumes ahora es extra."
-            : `Te ${left === 1 ? "falta 1" : `faltan ${left}`} para cumplirla.`}
-        </p>
-
-        <div className="mt-4 border-t border-line pt-4">
-          <QuickContact />
-        </div>
-
-        {today.prospects.length > 0 && (
-          <div className="mt-4 border-t border-line pt-3">
-            <p className="label">Anotados hoy</p>
-            <ul className="flex flex-wrap gap-1.5">
-              {today.prospects.map((p) => (
-                <li key={p.id}>
-                  <Link
-                    href={`/prospectos/${p.id}`}
-                    className="chip bg-bg py-1 text-sm font-semibold text-ink hover:underline"
-                  >
-                    {p.business_name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        <ColdCounter count={today.count} target={today.target} />
       </section>
 
       <div className="mb-3 grid gap-3 md:grid-cols-2">

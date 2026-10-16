@@ -1,14 +1,15 @@
-import { addDays, isWeekend, localDay, todayISO } from "./dates";
-import type { Prospect } from "./types";
+import { addDays, isWeekend, todayISO } from "./dates";
+import type { ColdContactDay } from "./types";
 
 // ============================================================================
-// Metas estilo Clash of Clans. Nada se marca a mano: todo sale de lo que ya
-// está cargado (prospectos, y lo cobrado en pesos para la meta final), así que
-// no hay tablas nuevas. Son ACCIONES que dependen de vos — contactar negocios —
-// y no resultados como cerrar clientes, que llegan solos a partir de eso.
+// Metas estilo Clash of Clans. Lo único que se carga es cuántos negocios
+// contactaste en frío cada día (un número, sin nombres); los logros, la racha
+// y el nivel salen de ahí, y la meta final de lo cobrado en pesos. Son
+// ACCIONES que dependen de vos, no resultados como cerrar clientes, que
+// llegan solos a partir de eso.
 // ============================================================================
 
-/** Negocios nuevos por día. */
+/** Contactados en frío por día. */
 export const DAILY_TARGET = 10;
 
 /** La meta final, sólo en pesos: lo cobrado en dólares no suma acá. */
@@ -18,7 +19,7 @@ const MILLION_STEPS = [100_000, 250_000, 500_000, MILLION_UYU];
 interface TrackDef {
   id: string;
   title: string;
-  /** El objetivo de un escalón: "Contactar 50 negocios". */
+  /** El objetivo de un escalón: "Contactar 50 negocios en frío". */
   goal: (n: number) => string;
   tiers: number[];
 }
@@ -28,9 +29,9 @@ const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 const TRACKS: TrackDef[] = [
   {
     id: "contactados",
-    title: "Negocios contactados",
-    goal: (n) => `Contactar ${n} negocios`,
-    tiers: [10, 25, 50, 100, 250, 500, 1000],
+    title: "Contactados en frío",
+    goal: (n) => `Contactar ${n} negocios en frío`,
+    tiers: [10, 50, 100, 250, 500, 1000, 2500],
   },
   {
     id: "dias",
@@ -44,12 +45,6 @@ const TRACKS: TrackDef[] = [
     goal: (n) => `Racha de ${n} días seguidos`,
     tiers: [2, 3, 5, 10, 20, 40, 60],
   },
-  {
-    id: "referidos",
-    title: "Referidos",
-    goal: (n) => `Conseguir ${n} ${plural(n, "referido", "referidos")}`,
-    tiers: [1, 3, 5, 10, 25, 50],
-  },
 ];
 
 /**
@@ -60,11 +55,11 @@ const TRACKS: TrackDef[] = [
 const RANKS = [
   { name: "Novato", stars: 0 },
   { name: "Vendedor", stars: 2 },
-  { name: "Cazador", stars: 5 },
-  { name: "Imparable", stars: 9 },
-  { name: "Agencia", stars: 14 },
-  { name: "Empresario", stars: 19 },
-  { name: "Magnate", stars: 24 },
+  { name: "Cazador", stars: 4 },
+  { name: "Imparable", stars: 7 },
+  { name: "Agencia", stars: 10 },
+  { name: "Empresario", stars: 14 },
+  { name: "Magnate", stars: 18 },
 ];
 const MILLIONAIRE = "Millonario";
 
@@ -91,8 +86,6 @@ export interface Metas {
     count: number;
     target: number;
     done: boolean;
-    /** Lo anotado hoy, lo último primero. */
-    prospects: Prospect[];
   };
   streak: { current: number; best: number };
   tracks: TrackProgress[];
@@ -117,20 +110,6 @@ export interface Metas {
 }
 
 /**
- * Día por día, cuántos negocios anotaste. Cuenta también los archivados y los
- * que ya son clientes: archivar no te hace perder progreso.
- */
-function byDay(prospects: Prospect[]): Map<string, Prospect[]> {
-  const days = new Map<string, Prospect[]>();
-  for (const p of prospects) {
-    if (!p.created_at) continue;
-    const d = localDay(p.created_at);
-    days.set(d, [...(days.get(d) ?? []), p]);
-  }
-  return days;
-}
-
-/**
  * Racha de días cumpliendo la meta. Los fines de semana suman si los
  * cumplís, pero no la cortan si no. Hoy tampoco la corta mientras no termine.
  */
@@ -149,33 +128,29 @@ function streaks(metDays: Set<string>, today: string): { current: number; best: 
 }
 
 export function metas(
-  prospects: Prospect[],
+  days: ColdContactDay[],
   collectedUYU: number,
   today = todayISO(),
 ): Metas {
-  const days = byDay(prospects);
-  const todays = [...(days.get(today) ?? [])].sort((a, b) =>
-    b.created_at.localeCompare(a.created_at),
-  );
+  const todayCount = days.find((d) => d.contacted_on === today)?.contacts ?? 0;
   const metDays = new Set(
-    [...days].filter(([, list]) => list.length >= DAILY_TARGET).map(([d]) => d),
+    days.filter((d) => d.contacts >= DAILY_TARGET).map((d) => d.contacted_on),
   );
   const streak = streaks(metDays, today);
 
   const values: Record<string, number> = {
-    contactados: prospects.length,
+    contactados: days.reduce((sum, d) => sum + d.contacts, 0),
     dias: metDays.size,
     racha: streak.best,
-    referidos: prospects.filter((p) => p.source === "referido").length,
   };
 
   // En el orden en que se festejan: el día, los logros y, al final, el nivel.
   const unlocked: Unlocked[] = [];
-  const done = todays.length >= DAILY_TARGET;
+  const done = todayCount >= DAILY_TARGET;
   if (done) {
     unlocked.push({
       key: `dia:${today}`,
-      label: `Meta del día cumplida: ${DAILY_TARGET} negocios contactados`,
+      label: `Meta del día cumplida: ${DAILY_TARGET} contactados en frío`,
     });
   }
 
@@ -221,7 +196,7 @@ export function metas(
   }
 
   return {
-    today: { count: todays.length, target: DAILY_TARGET, done, prospects: todays },
+    today: { count: todayCount, target: DAILY_TARGET, done },
     streak,
     tracks,
     stars,
@@ -233,16 +208,4 @@ export function metas(
     },
     unlocked,
   };
-}
-
-/** Para no anotar dos veces el mismo negocio: sin tildes, mayúsculas ni espacios de más. */
-export function sameBusiness(a: string, b: string): boolean {
-  const norm = (s: string) =>
-    s
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .toLowerCase()
-      .replace(/\s+/g, " ")
-      .trim();
-  return norm(a) === norm(b);
 }

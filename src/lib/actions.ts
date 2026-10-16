@@ -5,7 +5,6 @@ import { redirect } from "next/navigation";
 import { currentPeriod, todayISO } from "./dates";
 import { amountDue, isFreeMonth } from "./billing";
 import { repo } from "./data";
-import { sameBusiness } from "./metas";
 import type {
   AdCard,
   CurrencyCode,
@@ -69,59 +68,6 @@ export async function saveProspect(id: string | null, fd: FormData) {
 
   refresh();
   redirect("/pipeline");
-}
-
-export type QuickAddState =
-  | { ok: true; name: string }
-  | { ok: false; error: string; existingId?: string }
-  | null;
-
-const INTERESTS: ServiceInterest[] = ["web", "ads", "ambos"];
-const SOURCES: LeadSource[] = ["frio", "in_person", "referido"];
-
-/**
- * Anotar rápido desde Metas: entra al pipeline como "Contactado", con fecha de
- * hoy, y te deja en la misma pantalla para anotar el siguiente.
- */
-export async function quickAddProspect(
-  _prev: QuickAddState,
-  fd: FormData,
-): Promise<QuickAddState> {
-  const name = str(fd, "business_name");
-  if (!name) return { ok: false, error: "Poné el nombre del negocio." };
-
-  // Si ya estaba (aunque esté archivado o sea cliente), no se cuenta dos veces.
-  const [active, archived] = await Promise.all([
-    repo().listProspects(),
-    repo().listArchived(),
-  ]);
-  const existing = [...active, ...archived.prospects].find((p) =>
-    sameBusiness(p.business_name, name),
-  );
-  if (existing) {
-    return {
-      ok: false,
-      error: `${existing.business_name} ya estaba anotado.`,
-      existingId: existing.id,
-    };
-  }
-
-  const interest = str(fd, "service_interest") as ServiceInterest;
-  const source = str(fd, "source") as LeadSource;
-  await repo().createProspect({
-    business_name: name,
-    contact_name: null,
-    phone: orNull(fd, "phone"),
-    service_interest: INTERESTS.includes(interest) ? interest : "web",
-    stage: "contactado",
-    source: SOURCES.includes(source) ? source : "frio",
-    last_contact_at: todayISO(),
-    next_action: null,
-    next_action_at: null,
-    notes: null,
-  });
-  refresh();
-  return { ok: true, name };
 }
 
 /** Anotar que hablaste hoy: un toque, sin abrir el formulario. */
@@ -496,5 +442,18 @@ export async function saveAdSpent(clientId: string, fd: FormData) {
     ad_spent_currency: (str(fd, "ad_spent_currency") || "USD") as CurrencyCode,
     ad_spent_on: raw ? todayISO() : null,
   });
+  refresh();
+}
+
+// ── Metas ───────────────────────────────────────────────────────────────────
+
+/**
+ * Sumar contactados en frío a hoy, o restar para corregir un toque de más.
+ * Sólo el número: sin nombres, para que anotar no lleve más que contactar.
+ */
+export async function addColdContacts(delta: number) {
+  const n = Math.trunc(delta);
+  if (!Number.isFinite(n) || n === 0 || Math.abs(n) > 1000) return;
+  await repo().addColdContacts(todayISO(), n);
   refresh();
 }

@@ -1,5 +1,5 @@
 import { todayISO } from "../dates";
-import type { AdMovement, ClientFull, Payment, Prospect } from "../types";
+import type { AdMovement, ClientFull, ColdContactDay, Payment, Prospect } from "../types";
 
 /** Fecha desplazada N días respecto de hoy, como 'YYYY-MM-DD'. */
 function shift(days: number): string {
@@ -21,7 +21,7 @@ function thisMonth(day: number): string {
 // Datos de ejemplo para el MODO DEMO. Las fechas son relativas a hoy, así que
 // el dashboard siempre muestra algo vivo en "Atención hoy".
 export function seedProspects(): Prospect[] {
-  const rows: Omit<Prospect, "created_at">[] = [
+  return [
     {
       id: "p1",
       business_name: "Parrilla El Fogón",
@@ -113,12 +113,6 @@ export function seedProspects(): Prospect[] {
       archived: false,
     },
   ];
-  // Mediodía en Montevideo de cada día; los dos últimos, anotados hoy.
-  const createdDaysAgo = [20, 14, 10, 6, 0, 0];
-  return rows.map((p, i) => ({
-    ...p,
-    created_at: `${shift(-createdDaysAgo[i])}T15:00:00.000Z`,
-  }));
 }
 
 export function seedClients(): ClientFull[] {
@@ -272,3 +266,12 @@ export function seedClients(): ClientFull[] {
 }
 
 export { shift as demoShift, thisMonth as demoThisMonth };
+
+/** Contactados en frío de los últimos días: una racha en curso y hoy a medias. */
+export function seedColdContacts(): ColdContactDay[] {
+  const perDay = [11, 10, 6, 12, 10, 4]; // de hace 5 días a hoy
+  return perDay.map((contacts, i) => ({
+    contacted_on: shift(i - (perDay.length - 1)),
+    contacts,
+  }));
+}

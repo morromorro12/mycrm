@@ -171,6 +171,16 @@ create index if not exists prospects_stage_idx      on prospects (stage);
 create index if not exists prospects_next_action_idx on prospects (next_action_at)
   where next_action_at is not null;
 
+-- ── Contactados en frío ─────────────────────────────────────────────────────
+-- La meta del día de Metas: cuántos negocios contactaste en frío. Un número
+-- por día y sin nombres, a propósito: anotar a cada uno lleva más tiempo que
+-- escribirle a uno nuevo.
+create table if not exists cold_contacts (
+  contacted_on date        primary key,
+  contacts     integer     not null default 0 check (contacts >= 0),
+  updated_at   timestamptz not null default now()
+);
+
 -- ── Migración ───────────────────────────────────────────────────────────────
 -- Si creaste las tablas con una versión anterior de este archivo, esto agrega
 -- la columna `archived` sin tocar tus datos. Si ya la tenés, no hace nada.
@@ -240,12 +250,15 @@ end $$;
 drop trigger if exists clients_touch         on clients;
 drop trigger if exists client_services_touch on client_services;
 drop trigger if exists prospects_touch       on prospects;
+drop trigger if exists cold_contacts_touch   on cold_contacts;
 
 create trigger clients_touch         before update on clients
   for each row execute function touch_updated_at();
 create trigger client_services_touch before update on client_services
   for each row execute function touch_updated_at();
 create trigger prospects_touch       before update on prospects
+  for each row execute function touch_updated_at();
+create trigger cold_contacts_touch   before update on cold_contacts
   for each row execute function touch_updated_at();
 
 -- ── Row Level Security ──────────────────────────────────────────────────────
@@ -263,11 +276,12 @@ alter table client_services enable row level security;
 alter table payments        enable row level security;
 alter table prospects       enable row level security;
 alter table ad_movements    enable row level security;
+alter table cold_contacts   enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['clients','client_services','payments','prospects','ad_movements'] loop
+  foreach t in array array['clients','client_services','payments','prospects','ad_movements','cold_contacts'] loop
     execute format('drop policy if exists %I on %I', t || '_anon_all', t);
     execute format(
       'create policy %I on %I for all to anon, authenticated using (true) with check (true)',

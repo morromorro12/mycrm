@@ -4,25 +4,15 @@
 
 export const TZ = "America/Montevideo";
 
-// 'en-CA' formatea justo como YYYY-MM-DD.
-const DAY_FMT = new Intl.DateTimeFormat("en-CA", {
-  timeZone: TZ,
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
 /** Hoy en Montevideo, como 'YYYY-MM-DD'. */
 export function todayISO(): string {
-  return DAY_FMT.format(new Date());
-}
-
-/**
- * El día uruguayo de un timestamp de la base: '2026-10-17T01:30:00Z' →
- * '2026-10-16', porque en Montevideo todavía eran las 22:30.
- */
-export function localDay(timestamp: string): string {
-  return DAY_FMT.format(new Date(timestamp));
+  // 'en-CA' formatea justo como YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 /** Fecha corrida N días: addDays('2026-10-16', -1) → '2026-10-15'. */

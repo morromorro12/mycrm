@@ -4,15 +4,13 @@ import type {
   PaymentKind,
   ClientFull,
   ClientService,
+  ColdContactDay,
   CurrencyCode,
   Payment,
   Prospect,
 } from "../types";
 
-export type ProspectInput = Omit<
-  Prospect,
-  "id" | "converted_client_id" | "archived" | "created_at"
->;
+export type ProspectInput = Omit<Prospect, "id" | "converted_client_id" | "archived">;
 // Lo gastado en pauta se carga desde la ficha, no en el alta.
 export type ClientInput = Omit<
   Client,
@@ -71,4 +69,9 @@ export interface Repo {
   /** Pauta con tu tarjeta: anotar o deshacer una transferencia del cliente. */
   addAdMovement(clientId: string, input: AdMovementInput): Promise<void>;
   deleteAdMovement(id: string): Promise<void>;
+
+  /** Contactados en frío: una fila por día con contactados. */
+  listColdContacts(): Promise<ColdContactDay[]>;
+  /** Suma (o resta, para corregir) contactados a un día. Nunca baja de 0. */
+  addColdContacts(day: string, delta: number): Promise<void>;
 }

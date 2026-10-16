@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Client, ClientFull, Payment, Prospect } from "../types";
+import type { Client, ClientFull, ColdContactDay, Payment, Prospect } from "../types";
 import type { Repo } from "./types";
 
 export function supabaseConfig() {
@@ -246,5 +246,35 @@ export const supabaseRepo: Repo = {
 
   async deleteAdMovement(id) {
     check(await db().from("ad_movements").delete().eq("id", id), "borrar movimiento de pauta");
+  },
+
+  async listColdContacts() {
+    // La API devuelve hasta 1000 filas por pedido. Una por día alcanza para
+    // casi tres años, pero se pide de a páginas para que el total nunca se corte.
+    const rows: ColdContactDay[] = [];
+    for (let from = 0; ; from += 1000) {
+      const r = await db()
+        .from("cold_contacts")
+        .select("contacted_on, contacts")
+        .order("contacted_on")
+        .range(from, from + 999);
+      const page = (check(r, "listar contactados") ?? []) as ColdContactDay[];
+      rows.push(...page);
+      if (page.length < 1000) return rows;
+    }
+  },
+
+  async addColdContacts(day, delta) {
+    const prev = check(
+      await db().from("cold_contacts").select("contacts").eq("contacted_on", day).maybeSingle(),
+      "leer contactados",
+    ) as { contacts: number } | null;
+    const contacts = Math.max(0, (prev?.contacts ?? 0) + delta);
+    check(
+      await db()
+        .from("cold_contacts")
+        .upsert({ contacted_on: day, contacts }, { onConflict: "contacted_on" }),
+      "anotar contactados",
+    );
   },
 };

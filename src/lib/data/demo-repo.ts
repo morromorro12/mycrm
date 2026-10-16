@@ -1,5 +1,5 @@
-import type { AdMovement, Client, ClientFull, Payment, Prospect } from "../types";
-import { seedClients, seedProspects } from "./seed";
+import type { AdMovement, Client, ClientFull, ColdContactDay, Payment, Prospect } from "../types";
+import { seedClients, seedColdContacts, seedProspects } from "./seed";
 import type { ClientInput, ProspectInput, Repo, ServiceInput } from "./types";
 
 // ============================================================================
@@ -12,6 +12,7 @@ import type { ClientInput, ProspectInput, Repo, ServiceInput } from "./types";
 interface Store {
   prospects: Prospect[];
   clients: ClientFull[];
+  coldContacts: ColdContactDay[];
   seq: number;
 }
 
@@ -19,8 +20,15 @@ interface Store {
 const g = globalThis as typeof globalThis & { __crmDemo?: Store };
 function store(): Store {
   if (!g.__crmDemo) {
-    g.__crmDemo = { prospects: seedProspects(), clients: seedClients(), seq: 1000 };
+    g.__crmDemo = {
+      prospects: seedProspects(),
+      clients: seedClients(),
+      coldContacts: seedColdContacts(),
+      seq: 1000,
+    };
   }
+  // Un store de antes de Metas, que sobrevivió a un hot-reload.
+  g.__crmDemo.coldContacts ??= seedColdContacts();
   return g.__crmDemo;
 }
 
@@ -39,13 +47,7 @@ export const demoRepo: Repo = {
   },
 
   async createProspect(input: ProspectInput) {
-    const p: Prospect = {
-      ...input,
-      id: id(),
-      converted_client_id: null,
-      archived: false,
-      created_at: new Date().toISOString(),
-    };
+    const p: Prospect = { ...input, id: id(), converted_client_id: null, archived: false };
     store().prospects.unshift(p);
     return clone(p);
   },
@@ -189,5 +191,18 @@ export const demoRepo: Repo = {
     for (const c of store().clients) {
       c.ad_movements = c.ad_movements.filter((m) => m.id !== mid);
     }
+  },
+
+  async listColdContacts() {
+    return clone(
+      store().coldContacts.slice().sort((a, b) => a.contacted_on.localeCompare(b.contacted_on)),
+    );
+  },
+
+  async addColdContacts(day, delta) {
+    const rows = store().coldContacts;
+    const row = rows.find((r) => r.contacted_on === day);
+    if (row) row.contacts = Math.max(0, row.contacts + delta);
+    else rows.push({ contacted_on: day, contacts: Math.max(0, delta) });
   },
 };

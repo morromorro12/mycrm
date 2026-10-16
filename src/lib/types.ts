@@ -42,11 +42,6 @@ export interface Prospect {
   converted_client_id: string | null;
   /** Archivado: sale de todas las listas, pero no se borra nada. */
   archived: boolean;
-  /**
-   * Cuándo se anotó (timestamp, lo pone la base). Es lo que cuenta para la
-   * meta diaria de negocios contactados.
-   */
-  created_at: string;
 }
 
 export interface ClientService {
@@ -130,6 +125,15 @@ export interface AdMovement {
   currency: CurrencyCode;
   moved_on: string; // YYYY-MM-DD
   note: string | null;
+}
+
+/**
+ * Contactados en frío de un día, para la meta diaria de Metas. Sólo el número:
+ * sin nombres, porque anotarlos lleva más que escribirle a uno nuevo.
+ */
+export interface ColdContactDay {
+  contacted_on: string; // YYYY-MM-DD
+  contacts: number;
 }
 
 /** Cliente con sus servicios y pagos ya resueltos. Lo que consumen las vistas. */

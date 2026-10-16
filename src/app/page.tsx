@@ -22,10 +22,11 @@ export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const r = repo();
-  const [prospects, clients, archived] = await Promise.all([
+  const [prospects, clients, archived, cold] = await Promise.all([
     r.listProspects(),
     r.listClients(),
     r.listArchived(),
+    r.listColdContacts(),
   ]);
 
   const today = todayISO();
@@ -36,7 +37,7 @@ export default async function Dashboard() {
   const setupsIn = collectedSetups(clients, today);
   const ledger = globalLedger(clients, archived.clients);
   const ads = adOverview(clients);
-  const goals = metas([...prospects, ...archived.prospects], ledger.total.UYU, today);
+  const goals = metas(cold, ledger.total.UYU, today);
 
   // Lo que las promos de primer mes dejan afuera de este mes, para que se
   // entienda por qué cobrado + pendiente no llega al MRR.

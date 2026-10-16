@@ -44,7 +44,7 @@ export function Bar({
   );
 }
 
-/** La tarjeta de Hoy: la meta del día y el nivel, y un toque te lleva a anotar. */
+/** La tarjeta de Hoy: la meta del día y el nivel, y un toque te lleva a sumar. */
 export function MetasCard({ m }: { m: Metas }) {
   const { count, target, done } = m.today;
   return (
@@ -58,13 +58,13 @@ export function MetasCard({ m }: { m: Metas }) {
       </div>
       <p className="mt-1 text-2xl font-extrabold tabular-nums">
         {count}
-        <span className="text-base font-bold text-muted"> / {target} negocios contactados</span>
+        <span className="text-base font-bold text-muted"> / {target} contactados en frío</span>
       </p>
       <div className="mt-2">
         <Bar pct={(count / target) * 100} tone={done ? "ok" : "brand"} label="Meta del día" />
       </div>
       <p className="mt-2 text-sm font-semibold text-brand">
-        {done ? "¡Cumplida! Ver metas →" : "Anotar contactos →"}
+        {done ? "¡Cumplida! Ver metas →" : "Sumar contactados →"}
       </p>
     </Link>
   );
