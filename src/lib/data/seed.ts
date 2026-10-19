@@ -298,6 +298,7 @@ export function seedHabits(): Habit[] {
     title,
     kind: "check",
     weekdays,
+    per_week: null,
     position,
     starts_on: since,
     ends_on: null,
@@ -309,11 +310,12 @@ export function seedHabits(): Habit[] {
     h("h4", "Seguimiento del pipeline", [1, 3, 5], 3),
     h("h5", "Mandar reporte a clientes de Ads", [5], 4),
     h("h6", "Planificar la semana", [7], 5),
+    { ...h("h7", "Salir a correr", [1, 2, 3, 4, 5, 6, 7], 6), per_week: 3 },
   ];
 }
 
 export function seedHabitChecks(): HabitCheck[] {
-  const habits = seedHabits().filter((h) => h.kind === "check");
+  const habits = seedHabits().filter((h) => h.kind === "check" && h.per_week === null);
   const checks: HabitCheck[] = [];
   for (let d = -16; d <= -1; d++) {
     if (d === -10 || d === -9) continue; // los días flojos
@@ -321,5 +323,9 @@ export function seedHabitChecks(): HabitCheck[] {
     for (const h of habits) if (appliesOn(h, day)) checks.push({ habit_id: h.id, done_on: day });
   }
   checks.push({ habit_id: "h2", done_on: shift(0) });
+  // Salir a correr: un día sí y uno no, salvo en los días flojos.
+  for (let d = -16; d <= -1; d += 2) {
+    if (d !== -10 && d !== -9) checks.push({ habit_id: "h7", done_on: shift(d) });
+  }
   return checks;
 }

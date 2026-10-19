@@ -4,7 +4,7 @@ import Link from "next/link";
 import { dayStatus, type Rutina } from "@/lib/rutina";
 import { IconFlame } from "../icons";
 import { Bar } from "../metas/parts";
-import { Checklist, doneOf, StreakToast, WeekDots } from "./parts";
+import { Checklist, doneOf, StreakToast, WeekDots, WeekGoals } from "./parts";
 import { useRutina } from "./useRutina";
 
 /** La tarjeta de Hoy: lo que toca hoy, para tachar sin salir del inicio. */
@@ -12,6 +12,8 @@ export function TodayRoutine({ rt }: { rt: Rutina }) {
   const { today } = rt;
   const r = useRutina(rt);
   const week = rt.week.map(r.view);
+  const goals = rt.goals.map(r.viewGoal);
+  const v = { week, goals };
   const plan = r.view(rt.todayPlan);
   const streak = r.streakWith(plan);
   const status = dayStatus(plan, today);
@@ -62,8 +64,8 @@ export function TodayRoutine({ rt }: { rt: Rutina }) {
           <Checklist
             plan={plan}
             today={today}
-            onToggle={(item) => r.toggle(plan, item, week)}
-            onAddCold={() => r.addCold(plan, week)}
+            onToggle={(item) => r.toggle(v, today, item)}
+            onAddCold={() => r.addCold(v, today)}
           />
         </>
       ) : (
@@ -72,6 +74,7 @@ export function TodayRoutine({ rt }: { rt: Rutina }) {
           <WeekDots week={week} today={today} />
         </div>
       )}
+      <WeekGoals goals={goals} day={today} today={today} onToggle={(g) => r.toggleGoal(v, today, g)} />
 
       <Link href="/semana" className="mt-3 block text-sm font-semibold text-brand">
         Ver la semana →

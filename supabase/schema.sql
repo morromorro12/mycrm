@@ -201,6 +201,9 @@ create table if not exists habits (
   -- Qué días toca: 1 = lunes … 7 = domingo.
   weekdays   smallint[]  not null default '{1,2,3,4,5}'
              check (cardinality(weekdays) > 0 and weekdays <@ '{1,2,3,4,5,6,7}'),
+  -- null = días fijos. Un número = tantas veces por semana, el día que
+  -- quieras (salir a correr 3 veces); ahí weekdays no importa.
+  per_week   smallint    check (per_week between 1 and 7),
   position   integer     not null default 0,
   starts_on  date        not null default current_date,
   ends_on    date,       -- el primer día en que ya no toca; null = vigente
@@ -273,6 +276,10 @@ with g as (
 delete from ad_movements m
  using moved
  where m.client_id = moved.id and m.kind = 'gasto';
+
+-- Rutina: tareas "X veces por semana", sin día fijo.
+alter table habits add column if not exists per_week smallint
+  check (per_week between 1 and 7);
 
 -- ── updated_at automático ───────────────────────────────────────────────────
 create or replace function touch_updated_at() returns trigger

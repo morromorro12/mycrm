@@ -74,7 +74,7 @@ toca los datos.
 | Pantalla | Para qué |
 |---|---|
 | **Hoy** | La rutina del día para tachar, MRR, total cobrado histórico, cobrado vs pendiente del mes, y la lista de lo que necesita atención hoy |
-| **Semana** | Las tareas fijas de cada día (las que se repiten, no las puntuales), para ir tachándolas, con racha de días completos y semanas perfectas |
+| **Semana** | Las tareas que se repiten (no las puntuales), por día o "X veces por semana", para ir tachándolas, con racha de días completos y semanas perfectas |
 | **Pipeline** | Kanban de prospectos. Arrastrá las tarjetas, o cambiá la etapa con el menú de cada una |
 | **Clientes** | Tabla con semáforo de pago y botón de un toque para marcar cobrado |
 | **Anuncios** | Mockup. Todavía no hay conexión con Meta |
@@ -189,6 +189,11 @@ los días a una tarea, la versión vieja termina hoy (`habits.ends_on`) y arranc
 otra; si la sacás, deja de tocar desde hoy pero los días pasados la siguen
 mostrando. "Contactar 10 negocios en frío" se tacha sola con el contador de
 Metas, para no anotar lo mismo dos veces.
+
+Las tareas "X veces por semana" (salir a correr 3 veces) no tienen día: se
+tachan el día que las hacés. No cortan la racha diaria, pero una semana es
+perfecta sólo si además de todos los días llegaste a esas veces. Si la creás
+a mitad de semana, esa semana pide como mucho los días que quedan.
 
 ### Nada se borra de un toque
 

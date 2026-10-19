@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { currentPeriod, isISODate, todayISO } from "./dates";
+import { currentPeriod, isISODate, todayISO, weekStart } from "./dates";
 import { amountDue, isFreeMonth } from "./billing";
 import { repo } from "./data";
 import type {
@@ -468,15 +468,24 @@ export async function setHabitDone(habitId: string, day: string, done: boolean) 
   refresh();
 }
 
-/** Título y días de una tarea, ya limpios; null si falta algo. */
-function cleanHabit(input: { title: unknown; weekdays: unknown }) {
+/**
+ * Título y cuándo toca, ya limpios; null si falta algo. Con `per_week` (1 a 7)
+ * es "tantas veces por semana" y los días no importan: se guardan todos.
+ */
+function cleanHabit(input: { title: unknown; weekdays: unknown; per_week?: unknown }) {
   const title = String(input.title ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
+  const perWeek = Number(input.per_week);
+  if (input.per_week != null && Number.isInteger(perWeek) && perWeek >= 1 && perWeek <= 7) {
+    return title ? { title, weekdays: [1, 2, 3, 4, 5, 6, 7], per_week: perWeek } : null;
+  }
   const raw = Array.isArray(input.weekdays) ? input.weekdays : [];
   const weekdays = [...new Set(raw.map(Number))]
     .filter((n) => Number.isInteger(n) && n >= 1 && n <= 7)
     .sort((a, b) => a - b);
-  return title && weekdays.length > 0 ? { title, weekdays } : null;
+  return title && weekdays.length > 0 ? { title, weekdays, per_week: null } : null;
 }
+
+type HabitForm = { title: string; weekdays: number[]; per_week: number | null };
 
 async function activeHabits() {
   return (await repo().listHabits())
@@ -484,13 +493,15 @@ async function activeHabits() {
     .sort((a, b) => a.position - b.position);
 }
 
-export async function addHabit(input: { title: string; weekdays: number[]; kind?: HabitKind }) {
-  const clean = cleanHabit(input);
+export async function addHabit(input: HabitForm & { kind?: HabitKind }) {
+  const kind: HabitKind = input.kind === "frio" ? "frio" : "check";
+  // La de contactados en frío es por día: se cumple con la meta diaria.
+  const clean = cleanHabit(kind === "frio" ? { ...input, per_week: null } : input);
   if (!clean) return;
   const current = await activeHabits();
   await repo().createHabit({
     ...clean,
-    kind: input.kind === "frio" ? "frio" : "check",
+    kind,
     position: current.reduce((max, h) => Math.max(max, h.position + 1), 0),
     starts_on: todayISO(),
     ends_on: null,
@@ -499,19 +510,23 @@ export async function addHabit(input: { title: string; weekdays: number[]; kind?
 }
 
 /**
- * Cambiar el título se hace en el lugar. Cambiar los días, de hoy en
- * adelante: la versión vieja termina hoy y arranca una nueva, así los días
- * que ya pasaron quedan como estaban y la racha no se toca. Lo tachado hoy
- * pasa a la versión nueva.
+ * Cambiar el título se hace en el lugar. Cambiar cuándo toca (los días, las
+ * veces por semana o de una cosa a la otra), de hoy en adelante: la versión
+ * vieja termina hoy y arranca una nueva, así los días y semanas que ya
+ * pasaron quedan como estaban y la racha no se toca. Lo tachado esta semana
+ * se copia a la versión nueva, para no perder lo que ya hiciste.
  */
-export async function updateHabit(id: string, input: { title: string; weekdays: number[] }) {
-  const clean = cleanHabit(input);
+export async function updateHabit(id: string, input: HabitForm) {
   const h = (await activeHabits()).find((x) => x.id === id);
+  const clean = h && cleanHabit(h.kind === "frio" ? { ...input, per_week: null } : input);
   if (!clean || !h) return;
 
   const today = todayISO();
-  const sameDays = clean.weekdays.join() === [...h.weekdays].sort((a, b) => a - b).join();
-  if (sameDays || h.starts_on >= today) {
+  const sameSchedule =
+    (h.per_week ?? null) === clean.per_week &&
+    (clean.per_week !== null ||
+      clean.weekdays.join() === [...h.weekdays].sort((a, b) => a - b).join());
+  if (sameSchedule || h.starts_on >= today) {
     await repo().updateHabit(id, clean);
   } else {
     await repo().updateHabit(id, { ends_on: today });
@@ -522,11 +537,11 @@ export async function updateHabit(id: string, input: { title: string; weekdays: 
       starts_on: today,
       ends_on: null,
     });
-    const checks = await repo().listHabitChecks();
-    if (checks.some((c) => c.habit_id === id && c.done_on === today)) {
-      await repo().setHabitCheck(id, today, false);
-      await repo().setHabitCheck(next.id, today, true);
-    }
+    const monday = weekStart(today);
+    const thisWeek = (await repo().listHabitChecks()).filter(
+      (c) => c.habit_id === id && c.done_on >= monday && c.done_on <= today,
+    );
+    await Promise.all(thisWeek.map((c) => repo().setHabitCheck(next.id, c.done_on, true)));
   }
   refresh();
 }

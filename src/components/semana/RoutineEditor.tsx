@@ -6,17 +6,20 @@ import { DAILY_TARGET } from "@/lib/metas";
 import {
   EVERY_DAY,
   normTitle,
+  scheduleLabel,
   SUGGESTIONS,
   WEEKDAYS,
-  weekdaysLabel,
   WORKDAYS,
 } from "@/lib/rutina";
 import type { Habit, HabitKind } from "@/lib/types";
 import { IconPlus } from "../icons";
 
+/** Cuándo toca: días fijos (per_week null) o tantas veces por semana. */
+type Schedule = { weekdays: number[]; per_week: number | null };
+
 type Op =
   | { t: "add"; habit: Habit }
-  | { t: "update"; id: string; title: string; weekdays: number[] }
+  | ({ t: "update"; id: string; title: string } & Schedule)
   | { t: "remove"; id: string }
   | { t: "move"; id: string; dir: -1 | 1 };
 
@@ -25,7 +28,9 @@ function reduce(list: Habit[], op: Op): Habit[] {
     case "add":
       return [...list, op.habit];
     case "update":
-      return list.map((h) => (h.id === op.id ? { ...h, title: op.title, weekdays: op.weekdays } : h));
+      return list.map((h) =>
+        h.id === op.id ? { ...h, title: op.title, weekdays: op.weekdays, per_week: op.per_week } : h,
+      );
     case "remove":
       return list.filter((h) => h.id !== op.id);
     case "move": {
@@ -55,17 +60,17 @@ export function RoutineEditor({ habits }: { habits: Habit[] }) {
     });
   }
 
-  function add(title: string, weekdays: number[], kind: HabitKind = "check") {
+  function add(title: string, when: Schedule, kind: HabitKind = "check") {
     const habit: Habit = {
       id: `nueva-${Date.now()}`,
       title,
       kind,
-      weekdays,
+      ...when,
       position: list.length,
       starts_on: "",
       ends_on: null,
     };
-    run({ t: "add", habit }, () => addHabit({ title, weekdays, kind }));
+    run({ t: "add", habit }, () => addHabit({ title, ...when, kind }));
   }
 
   const hasFrio = list.some((h) => h.kind === "frio");
@@ -98,10 +103,10 @@ export function RoutineEditor({ habits }: { habits: Habit[] }) {
                   initial={h}
                   submitLabel="Guardar"
                   onCancel={() => setEditing(null)}
-                  onSubmit={(title, weekdays) => {
+                  onSubmit={(title, when) => {
                     setEditing(null);
-                    run({ t: "update", id: h.id, title, weekdays }, () =>
-                      updateHabit(h.id, { title, weekdays }),
+                    run({ t: "update", id: h.id, title, ...when }, () =>
+                      updateHabit(h.id, { title, ...when }),
                     );
                   }}
                   extra={
@@ -133,7 +138,7 @@ export function RoutineEditor({ habits }: { habits: Habit[] }) {
                     )}
                   </span>
                   <span className="flex shrink-0 items-center gap-2">
-                    <span className="chip bg-bg text-muted">{weekdaysLabel(h.weekdays)}</span>
+                    <span className="chip bg-bg text-muted">{scheduleLabel(h)}</span>
                     <span className="text-muted" aria-hidden>
                       ›
                     </span>
@@ -150,9 +155,9 @@ export function RoutineEditor({ habits }: { habits: Habit[] }) {
           <HabitForm
             submitLabel="Agregar"
             onCancel={() => setEditing(null)}
-            onSubmit={(title, weekdays) => {
+            onSubmit={(title, when) => {
               setEditing(null);
-              add(title, weekdays);
+              add(title, when);
             }}
           />
         ) : (
@@ -173,12 +178,12 @@ export function RoutineEditor({ habits }: { habits: Habit[] }) {
               <button
                 key={s.title}
                 type="button"
-                onClick={() => add(s.title, s.weekdays, s.kind)}
+                onClick={() => add(s.title, s, s.kind)}
                 className="btn !min-h-0 !justify-start !py-2 text-left text-sm"
               >
                 <IconPlus className="h-4 w-4 shrink-0 text-brand" />
                 <span>
-                  {s.title} <span className="text-xs font-semibold text-muted">· {weekdaysLabel(s.weekdays)}</span>
+                  {s.title} <span className="text-xs font-semibold text-muted">· {scheduleLabel(s)}</span>
                 </span>
               </button>
             ))}
@@ -198,13 +203,19 @@ function HabitForm({
 }: {
   initial?: Habit;
   submitLabel: string;
-  onSubmit: (title: string, weekdays: number[]) => void;
+  onSubmit: (title: string, when: Schedule) => void;
   onCancel: () => void;
   extra?: React.ReactNode;
 }) {
   const [title, setTitle] = useState(initial?.title ?? "");
-  const [days, setDays] = useState<number[]>(initial?.weekdays ?? WORKDAYS);
-  const valid = title.trim().length > 0 && days.length > 0;
+  const [weekly, setWeekly] = useState(initial?.per_week != null);
+  const [days, setDays] = useState<number[]>(
+    initial && initial.per_week == null ? initial.weekdays : WORKDAYS,
+  );
+  const [times, setTimes] = useState(initial?.per_week ?? 3);
+  // La de contactados en frío va por día: se cumple con la meta diaria.
+  const canBeWeekly = initial?.kind !== "frio";
+  const valid = title.trim().length > 0 && (weekly || days.length > 0);
 
   const toggle = (n: number) =>
     setDays((d) => (d.includes(n) ? d.filter((x) => x !== n) : [...d, n].sort((a, b) => a - b)));
@@ -213,7 +224,11 @@ function HabitForm({
     <form
       onSubmit={(e) => {
         e.preventDefault();
-        if (valid) onSubmit(title.trim(), days);
+        if (!valid) return;
+        onSubmit(
+          title.trim(),
+          weekly ? { weekdays: EVERY_DAY, per_week: times } : { weekdays: days, per_week: null },
+        );
       }}
       className="grid gap-3"
     >
@@ -223,44 +238,92 @@ function HabitForm({
         maxLength={80}
         autoFocus={!initial}
         required
-        placeholder="Ej: Revisar las campañas de Ads"
+        placeholder={weekly ? "Ej: Salir a correr" : "Ej: Revisar las campañas de Ads"}
         aria-label="Qué tenés que hacer"
         className="field"
       />
-      <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="label">Qué días</span>
-          <span className="flex gap-3 text-xs font-semibold">
-            <button type="button" onClick={() => setDays(WORKDAYS)} className="text-brand">
-              Lu a Vi
+
+      {canBeWeekly && (
+        <div className="grid grid-cols-2 gap-1 rounded-xl bg-bg p-1" role="group" aria-label="Cuándo toca">
+          {[
+            { on: false, label: "Días fijos" },
+            { on: true, label: "Veces por semana" },
+          ].map((o) => (
+            <button
+              key={o.label}
+              type="button"
+              aria-pressed={weekly === o.on}
+              onClick={() => setWeekly(o.on)}
+              className={`rounded-lg py-2 text-sm font-bold ${
+                weekly === o.on ? "bg-surface text-ink shadow-sm" : "text-muted"
+              }`}
+            >
+              {o.label}
             </button>
-            <button type="button" onClick={() => setDays(EVERY_DAY)} className="text-brand">
-              Todos
-            </button>
-          </span>
+          ))}
         </div>
-        <div className="grid grid-cols-7 gap-1">
-          {WEEKDAYS.map((w) => {
-            const on = days.includes(w.n);
-            return (
+      )}
+
+      {weekly ? (
+        <div>
+          <span className="label">Cuántas veces por semana</span>
+          <div className="grid grid-cols-7 gap-1">
+            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
               <button
-                key={w.n}
+                key={n}
                 type="button"
-                aria-pressed={on}
-                onClick={() => toggle(w.n)}
-                className={`rounded-lg border py-2 text-sm font-bold ${
-                  on ? "border-brand bg-brand text-white" : "border-line text-muted"
+                aria-pressed={times === n}
+                onClick={() => setTimes(n)}
+                className={`rounded-lg border py-2 text-sm font-bold tabular-nums ${
+                  times === n ? "border-brand bg-brand text-white" : "border-line text-muted"
                 }`}
               >
-                {w.short}
+                {n}
               </button>
-            );
-          })}
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            Sin día fijo: la tachás el día que la hacés. No corta la racha diaria, pero para la
+            semana perfecta tenés que llegar a las {times} {times === 1 ? "vez" : "veces"}.
+          </p>
         </div>
-        {days.length === 0 && (
-          <p className="mt-1 text-xs font-semibold text-bad">Elegí al menos un día.</p>
-        )}
-      </div>
+      ) : (
+        <div>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="label">Qué días</span>
+            <span className="flex gap-3 text-xs font-semibold">
+              <button type="button" onClick={() => setDays(WORKDAYS)} className="text-brand">
+                Lu a Vi
+              </button>
+              <button type="button" onClick={() => setDays(EVERY_DAY)} className="text-brand">
+                Todos
+              </button>
+            </span>
+          </div>
+          <div className="grid grid-cols-7 gap-1">
+            {WEEKDAYS.map((w) => {
+              const on = days.includes(w.n);
+              return (
+                <button
+                  key={w.n}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggle(w.n)}
+                  className={`rounded-lg border py-2 text-sm font-bold ${
+                    on ? "border-brand bg-brand text-white" : "border-line text-muted"
+                  }`}
+                >
+                  {w.short}
+                </button>
+              );
+            })}
+          </div>
+          {days.length === 0 && (
+            <p className="mt-1 text-xs font-semibold text-bad">Elegí al menos un día.</p>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2">
         <button type="submit" disabled={!valid} className="btn btn-primary">
           {submitLabel}

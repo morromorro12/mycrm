@@ -1,4 +1,4 @@
-import { addDays, isoWeekday, todayISO, weekStart } from "./dates";
+import { addDays, daysBetween, isoWeekday, todayISO, weekStart } from "./dates";
 import { DAILY_TARGET } from "./metas";
 import type { ColdContactDay, Habit, HabitCheck, HabitKind } from "./types";
 
@@ -13,6 +13,11 @@ import type { ColdContactDay, Habit, HabitCheck, HabitKind } from "./types";
 //   · Hoy no la corta mientras no termine: tenés hasta la medianoche.
 //   · Cambiar la rutina no reescribe el pasado (ver Habit.ends_on), así que
 //     sumar una tarea o cambiarle los días nunca te rompe una racha.
+//
+// Las tareas "X veces por semana" (salir a correr 3 veces) no tienen día:
+// se tacha el día que las hacés. No tocan la racha diaria, porque ningún día
+// en particular tocaba hacerlas, pero una semana es perfecta sólo si además
+// de todos los días cumpliste las veces de cada una.
 // ============================================================================
 
 export const WEEKDAYS = [
@@ -46,13 +51,18 @@ export function weekdaysLabel(days: number[]): string {
   return parts.join(" · ");
 }
 
-/** Si una tarea toca ese día: estaba vigente y es uno de sus días. */
+/** '3 veces por semana' o los días: 'Lu a Vi'. */
+export function scheduleLabel(h: { weekdays: number[]; per_week: number | null }): string {
+  if (h.per_week == null) return weekdaysLabel(h.weekdays);
+  return `${h.per_week} ${h.per_week === 1 ? "vez" : "veces"} por semana`;
+}
+
+const activeOn = (h: Habit, day: string) =>
+  h.starts_on <= day && (h.ends_on === null || day < h.ends_on);
+
+/** Si una tarea de días fijos toca ese día: estaba vigente y es uno de sus días. */
 export function appliesOn(h: Habit, day: string): boolean {
-  return (
-    h.starts_on <= day &&
-    (h.ends_on === null || day < h.ends_on) &&
-    h.weekdays.includes(isoWeekday(day))
-  );
+  return h.per_week == null && activeOn(h, day) && h.weekdays.includes(isoWeekday(day));
 }
 
 export interface DayItem {
@@ -85,6 +95,34 @@ export function dayStatus(plan: DayPlan, today: string): DayStatus {
   return plan.day === today ? "en-curso" : "incompleto";
 }
 
+/** Una tarea "X veces por semana", en una semana dada. */
+export interface WeekGoal {
+  id: string;
+  title: string;
+  /** El lunes de la semana. */
+  week: string;
+  perWeek: number;
+  /**
+   * Cuántas veces se piden esa semana: perWeek, o menos si la tarea arrancó a
+   * mitad de semana y no quedaban tantos días.
+   */
+  required: number;
+  /** Los días que la hiciste, en orden. */
+  days: string[];
+  done: boolean;
+}
+
+/** Que no quede nada pendiente en la semana: todos los días y todas las veces. */
+export function weekPerfect(week: DayPlan[], goals: WeekGoal[], today: string): boolean {
+  const statuses = week.map((d) => dayStatus(d, today));
+  const hasTasks = goals.length > 0 || statuses.some((s) => s !== "libre");
+  return (
+    hasTasks &&
+    goals.every((g) => g.done) &&
+    statuses.every((s) => s === "completo" || s === "libre")
+  );
+}
+
 /** Lo que se cuenta de la rutina para Metas. */
 export interface RutinaStats {
   best: number;
@@ -95,6 +133,8 @@ export interface Rutina extends RutinaStats {
   today: string;
   /** Lunes a domingo de la semana pedida. */
   week: DayPlan[];
+  /** Las tareas "X veces por semana" de esa misma semana. */
+  goals: WeekGoal[];
   todayPlan: DayPlan;
   streak: number;
   /** La racha sin contar hoy: lo de hoy suma recién cuando lo completás. */
@@ -115,6 +155,12 @@ export function rutina(
   { today = todayISO(), weekOf = today }: { today?: string; weekOf?: string } = {},
 ): Rutina {
   const checked = new Set(checks.map((c) => checkKey(c.habit_id, c.done_on)));
+  const daysByHabit = new Map<string, string[]>();
+  for (const c of checks) {
+    const list = daysByHabit.get(c.habit_id);
+    if (list) list.push(c.done_on);
+    else daysByHabit.set(c.habit_id, [c.done_on]);
+  }
   const counts = new Map(cold.map((c) => [c.contacted_on, c.contacts]));
   const ordered = [...habits].sort(byPosition);
 
@@ -133,6 +179,29 @@ export function rutina(
         };
       }),
   });
+
+  // Cuenta la versión vigente el domingo: si le cambiaste las veces a mitad
+  // de semana, esa semana ya va con las nuevas.
+  const goalsOf = (monday: string): WeekGoal[] => {
+    const sunday = addDays(monday, 6);
+    return ordered
+      .filter((h) => h.per_week != null && activeOn(h, sunday))
+      .map((h) => {
+        const perWeek = h.per_week ?? 1;
+        const from = h.starts_on > monday ? h.starts_on : monday;
+        const required = Math.min(perWeek, daysBetween(from, sunday) + 1);
+        const days = (daysByHabit.get(h.id) ?? []).filter((d) => d >= monday && d <= sunday).sort();
+        return {
+          id: h.id,
+          title: h.title,
+          week: monday,
+          perWeek,
+          required,
+          days,
+          done: days.length >= required,
+        };
+      });
+  };
 
   // Se recorre día por día desde la semana de la primera tarea hasta el
   // domingo de esta semana: la racha llega hasta hoy, y las semanas
@@ -165,6 +234,9 @@ export function rutina(
         if (status !== "completo") weekPerfect = false;
       }
       if (isoWeekday(day) === 7) {
+        const goals = goalsOf(weekStart(day));
+        if (goals.length > 0) weekHasTasks = true;
+        if (!goals.every((g) => g.done)) weekPerfect = false;
         if (weekHasTasks && weekPerfect) perfectWeeks++;
         weekHasTasks = false;
         weekPerfect = true;
@@ -176,6 +248,7 @@ export function rutina(
   return {
     today,
     week: Array.from({ length: 7 }, (_, i) => plan(addDays(monday, i))),
+    goals: goalsOf(monday),
     todayPlan: plan(today),
     streak: run,
     streakBeforeToday: before,
@@ -186,15 +259,22 @@ export function rutina(
 }
 
 /** Ideas para arrancar, pensadas para tu laburo. Se agregan con un toque. */
-export const SUGGESTIONS: { title: string; kind: HabitKind; weekdays: number[] }[] = [
-  { title: `Contactar ${DAILY_TARGET} negocios en frío`, kind: "frio", weekdays: WORKDAYS },
-  { title: "Responder mensajes de clientes", kind: "check", weekdays: WORKDAYS },
-  { title: "Revisar las campañas de Ads", kind: "check", weekdays: WORKDAYS },
-  { title: "Seguimiento del pipeline", kind: "check", weekdays: [1, 3, 5] },
-  { title: "Armar un creativo nuevo para testear", kind: "check", weekdays: [2, 4] },
-  { title: "Revisar cobros pendientes", kind: "check", weekdays: [1] },
-  { title: "Mandar reporte a clientes de Ads", kind: "check", weekdays: [5] },
-  { title: "Planificar la semana", kind: "check", weekdays: [7] },
+export const SUGGESTIONS: {
+  title: string;
+  kind: HabitKind;
+  weekdays: number[];
+  per_week: number | null;
+}[] = [
+  { title: `Contactar ${DAILY_TARGET} negocios en frío`, kind: "frio", weekdays: WORKDAYS, per_week: null },
+  { title: "Responder mensajes de clientes", kind: "check", weekdays: WORKDAYS, per_week: null },
+  { title: "Revisar las campañas de Ads", kind: "check", weekdays: WORKDAYS, per_week: null },
+  { title: "Seguimiento del pipeline", kind: "check", weekdays: [1, 3, 5], per_week: null },
+  { title: "Armar un creativo nuevo para testear", kind: "check", weekdays: [2, 4], per_week: null },
+  { title: "Revisar cobros pendientes", kind: "check", weekdays: [1], per_week: null },
+  { title: "Mandar reporte a clientes de Ads", kind: "check", weekdays: [5], per_week: null },
+  { title: "Planificar la semana", kind: "check", weekdays: [7], per_week: null },
+  { title: "Salir a correr", kind: "check", weekdays: EVERY_DAY, per_week: 3 },
+  { title: "Publicar en mis redes", kind: "check", weekdays: EVERY_DAY, per_week: 2 },
 ];
 
 /** Para no sugerir lo que ya tenés: sin mayúsculas, tildes ni espacios de más. */

@@ -152,6 +152,11 @@ export interface Habit {
   kind: HabitKind;
   /** Qué días toca: 1 = lunes … 7 = domingo. */
   weekdays: number[];
+  /**
+   * null = días fijos (los de `weekdays`). Un número = tantas veces por
+   * semana, el día que quieras (salir a correr 3 veces).
+   */
+  per_week: number | null;
   position: number;
   starts_on: string; // YYYY-MM-DD
   /** El primer día en que ya no toca. null = vigente. */

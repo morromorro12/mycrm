@@ -2,9 +2,16 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { dayOfMonth } from "@/lib/dates";
+import { dayOfMonth, isoWeekday } from "@/lib/dates";
 import { DAILY_TARGET } from "@/lib/metas";
-import { dayStatus, type DayItem, type DayPlan, type DayStatus } from "@/lib/rutina";
+import {
+  dayStatus,
+  WEEKDAYS,
+  type DayItem,
+  type DayPlan,
+  type DayStatus,
+  type WeekGoal,
+} from "@/lib/rutina";
 import { IconCheck, IconFlame } from "../icons";
 import type { Festejo } from "./useRutina";
 
@@ -190,7 +197,7 @@ export function WeekDots({ week, today }: { week: DayPlan[]; today: string }) {
   );
 }
 
-/** El festejo al completar el día. Se va solo a los pocos segundos. */
+/** El festejo: día completo, semana perfecta o meta semanal. Se va solo. */
 export function StreakToast({ festejo, onClose }: { festejo: Festejo | null; onClose: () => void }) {
   useEffect(() => {
     if (!festejo) return;
@@ -199,7 +206,6 @@ export function StreakToast({ festejo, onClose }: { festejo: Festejo | null; onC
   }, [festejo, onClose]);
 
   if (!festejo) return null;
-  const { streak, record, perfectWeek } = festejo;
   return (
     <div
       role="status"
@@ -213,15 +219,85 @@ export function StreakToast({ festejo, onClose }: { festejo: Festejo | null; onC
       >
         <IconFlame filled className="h-10 w-10 shrink-0 text-warn" />
         <span className="min-w-0">
-          <span className="block text-lg font-extrabold text-warn">
-            {perfectWeek ? "¡Semana perfecta!" : "¡Día completo!"}
-          </span>
-          <span className="block text-sm font-semibold">
-            Racha de {streak} {streak === 1 ? "día" : "días"}
-            {record && streak > 1 ? " · ¡tu mejor racha!" : ""}
-          </span>
+          <span className="block text-lg font-extrabold text-warn">{festejo.title}</span>
+          <span className="block text-sm font-semibold">{festejo.detail}</span>
         </span>
       </button>
     </div>
+  );
+}
+
+/**
+ * Las tareas "X veces por semana": se tacha el día que las hacés. La fila se
+ * pone verde cuando llegás a las veces de la semana.
+ */
+export function WeekGoals({
+  goals,
+  day,
+  today,
+  onToggle,
+}: {
+  goals: WeekGoal[];
+  day: string;
+  today: string;
+  onToggle: (goal: WeekGoal) => void;
+}) {
+  if (goals.length === 0) return null;
+  const future = day > today;
+  return (
+    <div className="mt-4">
+      <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-muted">En la semana</h3>
+      <ul className="grid gap-2">
+        {goals.map((g) => {
+          const here = g.days.includes(day);
+          const count = g.days.length;
+          const when = g.days.map((d) => WEEKDAYS[isoWeekday(d) - 1].short).join(" · ");
+          return (
+            <li key={g.id}>
+              <button
+                type="button"
+                role="checkbox"
+                aria-checked={here}
+                disabled={future}
+                onClick={() => onToggle(g)}
+                className={`flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors disabled:cursor-default ${
+                  g.done ? "border-ok/30 bg-ok-bg" : "border-line hover:border-muted disabled:hover:border-line"
+                }`}
+              >
+                <Tick done={here} muted={future} />
+                <span className="min-w-0 flex-1">
+                  <span className={`block font-semibold ${g.done ? "text-muted line-through" : ""}`}>
+                    {g.title}
+                  </span>
+                  <span className="block text-xs font-semibold text-muted">
+                    {g.done
+                      ? `¡Cumplida! ${when}`
+                      : count > 0
+                        ? `${count} de ${g.required} · ${when}`
+                        : `${g.required} ${g.required === 1 ? "vez" : "veces"}${
+                            future ? "" : " · tocá el día que lo hagas"
+                          }`}
+                  </span>
+                </span>
+                <Dots count={count} of={g.required} />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+function Dots({ count, of }: { count: number; of: number }) {
+  return (
+    <span className="flex shrink-0 gap-1" aria-label={`${Math.min(count, of)} de ${of}`}>
+      {Array.from({ length: of }, (_, i) => (
+        <span
+          key={i}
+          className={`h-2.5 w-2.5 rounded-full border ${i < count ? "border-ok bg-ok" : "border-muted/50"}`}
+        />
+      ))}
+    </span>
   );
 }

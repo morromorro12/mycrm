@@ -6,7 +6,7 @@ import { addDays, weekdayDate, weekRangeLabel } from "@/lib/dates";
 import { dayStatus, WEEKDAYS, type DayPlan, type Rutina } from "@/lib/rutina";
 import { IconFlame } from "../icons";
 import { Bar } from "../metas/parts";
-import { Checklist, DayRing, doneOf, STATUS_TEXT, StreakToast } from "./parts";
+import { Checklist, DayRing, doneOf, STATUS_TEXT, StreakToast, WeekGoals } from "./parts";
 import { useRutina } from "./useRutina";
 
 /**
@@ -29,6 +29,8 @@ export function WeekView({
   const { today } = rt;
   const r = useRutina(rt);
   const week = rt.week.map(r.view);
+  const goals = rt.goals.map(r.viewGoal);
+  const v = { week, goals };
   const todayPlan = r.view(rt.todayPlan);
   const streak = r.streakWith(todayPlan);
   const best = Math.max(rt.best, streak);
@@ -41,8 +43,12 @@ export function WeekView({
   const done = doneOf(plan);
   const total = plan.items.length;
 
-  const weekTotal = week.reduce((n, d) => n + d.items.length, 0);
-  const weekDone = week.reduce((n, d) => n + doneOf(d), 0);
+  // Cada vez que pide una semanal cuenta como una tarea más de la semana.
+  const weekTotal =
+    week.reduce((n, d) => n + d.items.length, 0) + goals.reduce((n, g) => n + g.required, 0);
+  const weekDone =
+    week.reduce((n, d) => n + doneOf(d), 0) +
+    goals.reduce((n, g) => n + Math.min(g.days.length, g.required), 0);
 
   const hasHabits = rt.habits.length > 0;
   const todayStatus = dayStatus(todayPlan, today);
@@ -151,8 +157,8 @@ export function WeekView({
               <Checklist
                 plan={plan}
                 today={today}
-                onToggle={(item) => r.toggle(plan, item, week)}
-                onAddCold={() => r.addCold(plan, week)}
+                onToggle={(item) => r.toggle(v, plan.day, item)}
+                onAddCold={() => r.addCold(v, plan.day)}
               />
               <DayNote plan={plan} today={today} />
             </>
@@ -163,6 +169,12 @@ export function WeekView({
                 : "Todavía no armaste tu rutina. Agregá abajo las tareas que se repiten cada semana."}
             </p>
           )}
+          <WeekGoals
+            goals={goals}
+            day={plan.day}
+            today={today}
+            onToggle={(g) => r.toggleGoal(v, plan.day, g)}
+          />
         </div>
       </section>
 
