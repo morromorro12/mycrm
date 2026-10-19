@@ -283,8 +283,8 @@ function HabitForm({
             ))}
           </div>
           <p className="mt-1 text-xs text-muted">
-            Sin día fijo: la tachás el día que la hacés. No corta la racha diaria, pero para la
-            semana perfecta tenés que llegar a las {times} {times === 1 ? "vez" : "veces"}.
+            Sin día fijo: la tachás el día que la hacés. Tenés hasta el domingo: si la semana
+            cierra sin llegar a {times === 1 ? "esa vez" : `las ${times} veces`}, se corta la racha.
           </p>
         </div>
       ) : (

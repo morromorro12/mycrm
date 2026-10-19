@@ -191,9 +191,10 @@ mostrando. "Contactar 10 negocios en frío" se tacha sola con el contador de
 Metas, para no anotar lo mismo dos veces.
 
 Las tareas "X veces por semana" (salir a correr 3 veces) no tienen día: se
-tachan el día que las hacés. No cortan la racha diaria, pero una semana es
-perfecta sólo si además de todos los días llegaste a esas veces. Si la creás
-a mitad de semana, esa semana pide como mucho los días que quedan.
+tachan el día que las hacés. Tenés hasta el domingo a la medianoche: si la
+semana cierra sin llegar a esas veces, la racha se corta ahí, y la app avisa
+antes cuando ya no podés saltear ningún día o ya no llegás. Si la creás a
+mitad de semana, esa semana pide como mucho los días que quedan.
 
 ### Nada se borra de un toque
 

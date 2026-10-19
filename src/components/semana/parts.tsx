@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { dayOfMonth, isoWeekday } from "@/lib/dates";
+import { addDays, dayOfMonth, daysBetween, isoWeekday } from "@/lib/dates";
 import { DAILY_TARGET } from "@/lib/metas";
 import {
   dayStatus,
@@ -269,15 +269,7 @@ export function WeekGoals({
                   <span className={`block font-semibold ${g.done ? "text-muted line-through" : ""}`}>
                     {g.title}
                   </span>
-                  <span className="block text-xs font-semibold text-muted">
-                    {g.done
-                      ? `¡Cumplida! ${when}`
-                      : count > 0
-                        ? `${count} de ${g.required} · ${when}`
-                        : `${g.required} ${g.required === 1 ? "vez" : "veces"}${
-                            future ? "" : " · tocá el día que lo hagas"
-                          }`}
-                  </span>
+                  <GoalNote goal={g} today={today} future={future} when={when} />
                 </span>
                 <Dots count={count} of={g.required} />
               </button>
@@ -287,6 +279,56 @@ export function WeekGoals({
       </ul>
     </div>
   );
+}
+
+/**
+ * Cuántas van y, si la semana se complica, el aviso: si el domingo no
+ * llegás a las veces, se corta la racha.
+ */
+function GoalNote({
+  goal: g,
+  today,
+  future,
+  when,
+}: {
+  goal: WeekGoal;
+  today: string;
+  future: boolean;
+  when: string;
+}) {
+  const count = g.days.length;
+  const sunday = addDays(g.week, 6);
+  const left = g.required - count;
+  // Los días que quedan para hacerla, contando hoy si todavía no la hiciste.
+  const room =
+    g.week <= today && today <= sunday
+      ? daysBetween(today, sunday) + 1 - (g.days.includes(today) ? 1 : 0)
+      : 0;
+  const so = count > 0 ? `${count} de ${g.required} · ` : "";
+
+  let text: string;
+  let tone = "text-muted";
+  if (g.done) {
+    text = `¡Cumplida! ${when}`;
+  } else if (sunday < today) {
+    text = `${so}no llegaste: se cortó la racha`;
+    tone = "text-bad";
+  } else if (room > 0 && left > room) {
+    text = `${so}ya no llegás: el lunes se corta la racha`;
+    tone = "text-bad";
+  } else if (room > 0 && left === room) {
+    text = `${so}${
+      left === 1 ? "queda 1 día y te falta 1" : `faltan ${left} en ${left} días`
+    }: no podés saltear ninguno`;
+    tone = "text-warn";
+  } else if (count > 0) {
+    text = `${count} de ${g.required} · ${when}`;
+  } else {
+    text = `${g.required} ${g.required === 1 ? "vez" : "veces"}${
+      future ? "" : " · tocá el día que lo hagas"
+    }`;
+  }
+  return <span className={`block text-xs font-semibold ${tone}`}>{text}</span>;
 }
 
 function Dots({ count, of }: { count: number; of: number }) {

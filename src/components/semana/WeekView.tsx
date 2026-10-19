@@ -54,6 +54,18 @@ export function WeekView({
   const todayStatus = dayStatus(todayPlan, today);
   const left = todayPlan.items.length - doneOf(todayPlan);
 
+  const hint = !hasHabits
+    ? "Armá tu rutina abajo para arrancar."
+    : streak === 0 && rt.missedLastWeek.length > 0
+      ? `Se cortó: la semana pasada no llegaste a ${listOf(rt.missedLastWeek)}.`
+      : todayStatus === "completo"
+        ? "Hoy está todo tachado. Mañana seguís sumando."
+        : todayStatus === "libre"
+          ? "Hoy no tenés tareas fijas: día libre."
+          : `Te ${left === 1 ? "falta 1" : `faltan ${left}`} hoy para ${
+              streak > 0 ? `llegar a ${streak + 1}` : "arrancar la racha"
+            }.`;
+
   const weekName =
     monday === thisMonday
       ? "Esta semana"
@@ -84,15 +96,7 @@ export function WeekView({
               </span>
             </p>
             <p className="mt-1 text-sm font-semibold text-muted">
-              {!hasHabits
-                ? "Armá tu rutina abajo para arrancar."
-                : todayStatus === "completo"
-                  ? "Hoy está todo tachado. Mañana seguís sumando."
-                  : todayStatus === "libre"
-                    ? "Hoy es día libre: la racha no se corta."
-                    : `Te ${left === 1 ? "falta 1" : `faltan ${left}`} hoy para ${
-                        streak > 0 ? `llegar a ${streak + 1}` : "arrancar la racha"
-                      }.`}
+              {hint}
             </p>
           </div>
         </div>
@@ -217,6 +221,10 @@ function DayButton({
     </button>
   );
 }
+
+/** 'A', 'A y B', 'A, B y C'. */
+const listOf = (xs: string[]) =>
+  xs.length <= 1 ? (xs[0] ?? "") : `${xs.slice(0, -1).join(", ")} y ${xs[xs.length - 1]}`;
 
 /** La flecha late mientras carga la otra semana, para que se note que tocaste. */
 function Arrow({ children }: { children: React.ReactNode }) {

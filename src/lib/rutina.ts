@@ -15,9 +15,9 @@ import type { ColdContactDay, Habit, HabitCheck, HabitKind } from "./types";
 //     sumar una tarea o cambiarle los días nunca te rompe una racha.
 //
 // Las tareas "X veces por semana" (salir a correr 3 veces) no tienen día:
-// se tacha el día que las hacés. No tocan la racha diaria, porque ningún día
-// en particular tocaba hacerlas, pero una semana es perfecta sólo si además
-// de todos los días cumpliste las veces de cada una.
+// se tacha el día que las hacés. Tenés hasta el domingo a la medianoche: si
+// la semana cierra sin llegar a las veces de alguna, la racha se corta ahí.
+// Y una semana es perfecta sólo si además de todos los días llegaste a todas.
 // ============================================================================
 
 export const WEEKDAYS = [
@@ -139,6 +139,8 @@ export interface Rutina extends RutinaStats {
   streak: number;
   /** La racha sin contar hoy: lo de hoy suma recién cuando lo completás. */
   streakBeforeToday: number;
+  /** Las semanales a las que no llegaste la semana pasada: cortaron la racha. */
+  missedLastWeek: string[];
   /** Las tareas vigentes, en orden: las que se editan. */
   habits: Habit[];
 }
@@ -210,6 +212,9 @@ export function rutina(
   let best = 0;
   let before = 0;
   let perfectWeeks = 0;
+  // El último corte de la racha: qué semanales lo causaron y de qué semana
+  // (vacío si fue un día incompleto).
+  let lastCut: { week: string; titles: string[] } | null = null;
   const first = habits.reduce<string | null>(
     (min, h) => (min === null || h.starts_on < min ? h.starts_on : min),
     null,
@@ -222,7 +227,10 @@ export function rutina(
       const status = dayStatus(plan(day), today);
       if (day < today) {
         if (status === "completo") run++;
-        else if (status === "incompleto") run = 0;
+        else if (status === "incompleto") {
+          run = 0;
+          lastCut = null;
+        }
         before = run;
       } else if (day === today && status === "completo") {
         run++;
@@ -235,8 +243,15 @@ export function rutina(
       }
       if (isoWeekday(day) === 7) {
         const goals = goalsOf(weekStart(day));
+        const missed = goals.filter((g) => !g.done);
+        // Semana cerrada sin llegar a las veces de alguna: se corta la racha.
+        if (day < today && missed.length > 0) {
+          run = 0;
+          before = 0;
+          lastCut = { week: weekStart(day), titles: missed.map((g) => g.title) };
+        }
         if (goals.length > 0) weekHasTasks = true;
-        if (!goals.every((g) => g.done)) weekPerfect = false;
+        if (missed.length > 0) weekPerfect = false;
         if (weekHasTasks && weekPerfect) perfectWeeks++;
         weekHasTasks = false;
         weekPerfect = true;
@@ -252,6 +267,8 @@ export function rutina(
     todayPlan: plan(today),
     streak: run,
     streakBeforeToday: before,
+    missedLastWeek:
+      lastCut?.week === addDays(weekStart(today), -7) ? lastCut.titles : [],
     best,
     perfectWeeks,
     habits: ordered.filter((h) => h.ends_on === null),

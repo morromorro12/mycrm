@@ -45,6 +45,12 @@ export function TodayRoutine({ rt }: { rt: Rutina }) {
         </Link>
       </div>
 
+      {streak === 0 && rt.missedLastWeek.length > 0 && (
+        <p className="mt-1 text-xs font-semibold text-bad">
+          La racha se cortó: la semana pasada no llegaste a {rt.missedLastWeek.join(", ")}.
+        </p>
+      )}
+
       {total > 0 ? (
         <>
           <div className="mt-1 flex items-center justify-between gap-2">
