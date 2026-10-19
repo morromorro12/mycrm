@@ -1,5 +1,14 @@
 import { todayISO } from "../dates";
-import type { AdMovement, ClientFull, ColdContactDay, Payment, Prospect } from "../types";
+import { appliesOn } from "../rutina";
+import type {
+  AdMovement,
+  ClientFull,
+  ColdContactDay,
+  Habit,
+  HabitCheck,
+  Payment,
+  Prospect,
+} from "../types";
 
 /** Fecha desplazada N días respecto de hoy, como 'YYYY-MM-DD'. */
 function shift(days: number): string {
@@ -274,4 +283,43 @@ export function seedColdContacts(): ColdContactDay[] {
     contacted_on: shift(i - (perDay.length - 1)),
     contacts,
   }));
+}
+
+/**
+ * Rutina de ejemplo: arrancó hace dos semanas y media, con un par de días
+ * flojos en el medio (cortan la racha) y hoy a medio tachar. La de
+ * contactados en frío arranca hace dos días, que es desde cuando hay
+ * contactados de ejemplo: se tacha sola con esos números.
+ */
+export function seedHabits(): Habit[] {
+  const since = shift(-16);
+  const h = (id: string, title: string, weekdays: number[], position: number): Habit => ({
+    id,
+    title,
+    kind: "check",
+    weekdays,
+    position,
+    starts_on: since,
+    ends_on: null,
+  });
+  return [
+    { ...h("h1", "Contactar 10 negocios en frío", [1, 2, 3, 4, 5], 0), kind: "frio", starts_on: shift(-2) },
+    h("h2", "Responder mensajes de clientes", [1, 2, 3, 4, 5], 1),
+    h("h3", "Revisar las campañas de Ads", [1, 2, 3, 4, 5], 2),
+    h("h4", "Seguimiento del pipeline", [1, 3, 5], 3),
+    h("h5", "Mandar reporte a clientes de Ads", [5], 4),
+    h("h6", "Planificar la semana", [7], 5),
+  ];
+}
+
+export function seedHabitChecks(): HabitCheck[] {
+  const habits = seedHabits().filter((h) => h.kind === "check");
+  const checks: HabitCheck[] = [];
+  for (let d = -16; d <= -1; d++) {
+    if (d === -10 || d === -9) continue; // los días flojos
+    const day = shift(d);
+    for (const h of habits) if (appliesOn(h, day)) checks.push({ habit_id: h.id, done_on: day });
+  }
+  checks.push({ habit_id: "h2", done_on: shift(0) });
+  return checks;
 }

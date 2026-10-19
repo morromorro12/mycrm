@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AttentionList } from "@/components/AttentionList";
 import { AdBalanceChips } from "@/components/clients/AdAccount";
 import { MetasCard } from "@/components/metas/parts";
+import { TodayRoutine } from "@/components/semana/TodayRoutine";
 import { PageTitle } from "@/components/ui";
 import { adOverview } from "@/lib/ad-balance";
 import {
@@ -15,6 +16,7 @@ import {
 import { repo } from "@/lib/data";
 import { currentPeriod, periodLabel, todayISO } from "@/lib/dates";
 import { metas } from "@/lib/metas";
+import { rutina } from "@/lib/rutina";
 import { formatMoney, formatTotals, type MoneyByCurrency } from "@/lib/money";
 import type { CurrencyCode } from "@/lib/types";
 
@@ -22,11 +24,13 @@ export const dynamic = "force-dynamic";
 
 export default async function Dashboard() {
   const r = repo();
-  const [prospects, clients, archived, cold] = await Promise.all([
+  const [prospects, clients, archived, cold, habits, checks] = await Promise.all([
     r.listProspects(),
     r.listClients(),
     r.listArchived(),
     r.listColdContacts(),
+    r.listHabits(),
+    r.listHabitChecks(),
   ]);
 
   const today = todayISO();
@@ -37,7 +41,8 @@ export default async function Dashboard() {
   const setupsIn = collectedSetups(clients, today);
   const ledger = globalLedger(clients, archived.clients);
   const ads = adOverview(clients);
-  const goals = metas(cold, ledger.total.UYU, today);
+  const routine = rutina(habits, checks, cold, { today });
+  const goals = metas(cold, ledger.total.UYU, routine, today);
 
   // Lo que las promos de primer mes dejan afuera de este mes, para que se
   // entienda por qué cobrado + pendiente no llega al MRR.
@@ -64,7 +69,9 @@ export default async function Dashboard() {
         }`}
       />
 
-      {/* La meta del día: lo que hay que hacer cuando no sabés qué hacer. */}
+      {/* Lo de todos los días, para tachar, y la meta del día: lo que hay que
+          hacer cuando no sabés qué hacer. */}
+      <TodayRoutine rt={routine} />
       <MetasCard m={goals} />
 
       {/* MRR — el número grande */}

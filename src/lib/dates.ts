@@ -27,6 +27,26 @@ export function isWeekend(iso: string): boolean {
   return d === 0 || d === 6;
 }
 
+/** Día de la semana: 1 = lunes … 7 = domingo. */
+export function isoWeekday(iso: string): number {
+  const d = new Date(`${iso}T12:00:00Z`).getUTCDay();
+  return d === 0 ? 7 : d;
+}
+
+/** El lunes de la semana de una fecha. */
+export function weekStart(iso: string): string {
+  return addDays(iso, 1 - isoWeekday(iso));
+}
+
+/** Que sea una fecha 'YYYY-MM-DD' de verdad, no cualquier texto. */
+export function isISODate(s: unknown): s is string {
+  return (
+    typeof s === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(s) &&
+    new Date(`${s}T12:00:00Z`).toISOString().slice(0, 10) === s
+  );
+}
+
 /** Primer día del mes de una fecha: '2026-09-17' → '2026-09-01'. */
 export function periodOf(iso: string): string {
   return `${iso.slice(0, 7)}-01`;
@@ -70,6 +90,22 @@ export function shortDate(iso: string): string {
   const d = dayOfMonth(iso);
   const m = MONTHS[Number(iso.slice(5, 7)) - 1].slice(0, 3);
   return `${d} ${m}`;
+}
+
+const WEEKDAY_NAMES = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+
+/** '2026-10-19' → 'lunes 19'. */
+export function weekdayDate(iso: string): string {
+  return `${WEEKDAY_NAMES[isoWeekday(iso) - 1]} ${dayOfMonth(iso)}`;
+}
+
+/** Lunes '2026-10-19' → '19 al 25 de octubre'; si cruza de mes, con los dos. */
+export function weekRangeLabel(monday: string): string {
+  const sunday = addDays(monday, 6);
+  const month = (iso: string) => MONTHS[Number(iso.slice(5, 7)) - 1];
+  return month(monday) === month(sunday)
+    ? `${dayOfMonth(monday)} al ${dayOfMonth(sunday)} de ${month(sunday)}`
+    : `${dayOfMonth(monday)} de ${month(monday)} al ${dayOfMonth(sunday)} de ${month(sunday)}`;
 }
 
 /** '2026-09-01' → 'setiembre 2026'. */

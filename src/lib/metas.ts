@@ -1,12 +1,13 @@
 import { addDays, isWeekend, todayISO } from "./dates";
+import type { RutinaStats } from "./rutina";
 import type { ColdContactDay } from "./types";
 
 // ============================================================================
 // Metas estilo Clash of Clans. Lo único que se carga es cuántos negocios
 // contactaste en frío cada día (un número, sin nombres); los logros, la racha
-// y el nivel salen de ahí, y la meta final de lo cobrado en pesos. Son
-// ACCIONES que dependen de vos, no resultados como cerrar clientes, que
-// llegan solos a partir de eso.
+// y el nivel salen de ahí y de la rutina semanal, y la meta final de lo
+// cobrado en pesos. Son ACCIONES que dependen de vos, no resultados como
+// cerrar clientes, que llegan solos a partir de eso.
 // ============================================================================
 
 /** Contactados en frío por día. */
@@ -44,6 +45,18 @@ const TRACKS: TrackDef[] = [
     title: "Mejor racha",
     goal: (n) => `Racha de ${n} días seguidos`,
     tiers: [2, 3, 5, 10, 20, 40, 60],
+  },
+  {
+    id: "rutina",
+    title: "Rutina completa, días seguidos",
+    goal: (n) => `Tachar toda la rutina ${n} días seguidos`,
+    tiers: [3, 7, 14, 30, 60, 100, 200],
+  },
+  {
+    id: "semanas",
+    title: "Semanas perfectas",
+    goal: (n) => `${n} ${plural(n, "semana perfecta", "semanas perfectas")} de rutina`,
+    tiers: [1, 2, 4, 8, 12, 26, 52],
   },
 ];
 
@@ -130,6 +143,7 @@ function streaks(metDays: Set<string>, today: string): { current: number; best: 
 export function metas(
   days: ColdContactDay[],
   collectedUYU: number,
+  routine: RutinaStats,
   today = todayISO(),
 ): Metas {
   const todayCount = days.find((d) => d.contacted_on === today)?.contacts ?? 0;
@@ -142,6 +156,8 @@ export function metas(
     contactados: days.reduce((sum, d) => sum + d.contacts, 0),
     dias: metDays.size,
     racha: streak.best,
+    rutina: routine.best,
+    semanas: routine.perfectWeeks,
   };
 
   // En el orden en que se festejan: el día, los logros y, al final, el nivel.

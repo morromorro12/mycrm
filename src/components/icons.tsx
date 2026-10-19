@@ -39,6 +39,21 @@ export const IconGoals = ({ className = base }: P) => (
   </svg>
 );
 
+export const IconWeek = ({ className = base }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+    <path d="M3.5 10h17M8 3v4M16 3v4" strokeLinecap="round" />
+    <path d="m9 15 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Llama de la racha: llena si está encendida. */
+export const IconFlame = ({ className = base, filled = false }: P & { filled?: boolean }) => (
+  <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
+    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.4-.5-2-1-3-1.1-2.1-.2-4.1 2-6 .5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.2.4-2.3 1-3a2.5 2.5 0 0 0 2.5 2.5Z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
 /** Estrella de logro: llena si está ganada, sólo el borde si no. */
 export const IconStar = ({ className = base, filled = false }: P & { filled?: boolean }) => (
   <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={className} aria-hidden>

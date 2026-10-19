@@ -1,5 +1,20 @@
-import type { AdMovement, Client, ClientFull, ColdContactDay, Payment, Prospect } from "../types";
-import { seedClients, seedColdContacts, seedProspects } from "./seed";
+import type {
+  AdMovement,
+  Client,
+  ClientFull,
+  ColdContactDay,
+  Habit,
+  HabitCheck,
+  Payment,
+  Prospect,
+} from "../types";
+import {
+  seedClients,
+  seedColdContacts,
+  seedHabitChecks,
+  seedHabits,
+  seedProspects,
+} from "./seed";
 import type { ClientInput, ProspectInput, Repo, ServiceInput } from "./types";
 
 // ============================================================================
@@ -13,6 +28,8 @@ interface Store {
   prospects: Prospect[];
   clients: ClientFull[];
   coldContacts: ColdContactDay[];
+  habits: Habit[];
+  habitChecks: HabitCheck[];
   seq: number;
 }
 
@@ -24,11 +41,15 @@ function store(): Store {
       prospects: seedProspects(),
       clients: seedClients(),
       coldContacts: seedColdContacts(),
+      habits: seedHabits(),
+      habitChecks: seedHabitChecks(),
       seq: 1000,
     };
   }
-  // Un store de antes de Metas, que sobrevivió a un hot-reload.
+  // Un store de antes de Metas o de la rutina, que sobrevivió a un hot-reload.
   g.__crmDemo.coldContacts ??= seedColdContacts();
+  g.__crmDemo.habits ??= seedHabits();
+  g.__crmDemo.habitChecks ??= seedHabitChecks();
   return g.__crmDemo;
 }
 
@@ -204,5 +225,36 @@ export const demoRepo: Repo = {
     const row = rows.find((r) => r.contacted_on === day);
     if (row) row.contacts = Math.max(0, row.contacts + delta);
     else rows.push({ contacted_on: day, contacts: Math.max(0, delta) });
+  },
+
+  async listHabits() {
+    return clone(store().habits);
+  },
+
+  async createHabit(input) {
+    const h: Habit = { ...input, id: id() };
+    store().habits.push(h);
+    return clone(h);
+  },
+
+  async updateHabit(hid, patch) {
+    const h = store().habits.find((x) => x.id === hid);
+    if (h) Object.assign(h, patch);
+  },
+
+  async deleteHabit(hid) {
+    const s = store();
+    s.habits = s.habits.filter((h) => h.id !== hid);
+    s.habitChecks = s.habitChecks.filter((c) => c.habit_id !== hid);
+  },
+
+  async listHabitChecks() {
+    return clone(store().habitChecks);
+  },
+
+  async setHabitCheck(hid, day, done) {
+    const s = store();
+    s.habitChecks = s.habitChecks.filter((c) => !(c.habit_id === hid && c.done_on === day));
+    if (done) s.habitChecks.push({ habit_id: hid, done_on: day });
   },
 };

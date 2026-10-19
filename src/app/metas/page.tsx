@@ -5,21 +5,24 @@ import { PageTitle } from "@/components/ui";
 import { globalLedger } from "@/lib/billing";
 import { repo } from "@/lib/data";
 import { MILLION_UYU, metas } from "@/lib/metas";
+import { rutina } from "@/lib/rutina";
 import { formatMoney } from "@/lib/money";
 
 export const dynamic = "force-dynamic";
 
 export default async function MetasPage() {
   const r = repo();
-  const [cold, clients, archived] = await Promise.all([
+  const [cold, clients, archived, habits, checks] = await Promise.all([
     r.listColdContacts(),
     r.listClients(),
     r.listArchived(),
+    r.listHabits(),
+    r.listHabitChecks(),
   ]);
 
   // Archivados incluidos: la plata cobrada no se evapora al archivar.
   const ledger = globalLedger(clients, archived.clients);
-  const m = metas(cold, ledger.total.UYU);
+  const m = metas(cold, ledger.total.UYU, rutina(habits, checks, cold));
   const { today, level, million } = m;
 
   return (

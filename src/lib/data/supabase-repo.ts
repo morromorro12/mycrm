@@ -1,5 +1,13 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
-import type { Client, ClientFull, ColdContactDay, Payment, Prospect } from "../types";
+import type {
+  Client,
+  ClientFull,
+  ColdContactDay,
+  Habit,
+  HabitCheck,
+  Payment,
+  Prospect,
+} from "../types";
 import type { Repo } from "./types";
 
 export function supabaseConfig() {
@@ -276,5 +284,59 @@ export const supabaseRepo: Repo = {
         .upsert({ contacted_on: day, contacts }, { onConflict: "contacted_on" }),
       "anotar contactados",
     );
+  },
+
+  async listHabits() {
+    const r = await db().from("habits").select("*").order("position").order("starts_on");
+    return check(r, "listar rutina") as Habit[];
+  },
+
+  async createHabit(input) {
+    const r = await db().from("habits").insert(input).select().single();
+    return check(r, "agregar tarea") as Habit;
+  },
+
+  async updateHabit(id, patch) {
+    check(await db().from("habits").update(patch).eq("id", id), "editar tarea");
+  },
+
+  async deleteHabit(id) {
+    check(await db().from("habits").delete().eq("id", id), "borrar tarea");
+  },
+
+  async listHabitChecks() {
+    // Unas pocas filas por día: pasa las 1000 de un pedido antes del año, así
+    // que se pide de a páginas para que la racha nunca se calcule a medias.
+    const rows: HabitCheck[] = [];
+    for (let from = 0; ; from += 1000) {
+      const r = await db()
+        .from("habit_checks")
+        .select("habit_id, done_on")
+        .order("done_on")
+        .order("habit_id")
+        .range(from, from + 999);
+      const page = (check(r, "listar tachadas") ?? []) as HabitCheck[];
+      rows.push(...page);
+      if (page.length < 1000) return rows;
+    }
+  },
+
+  async setHabitCheck(habitId, day, done) {
+    if (done) {
+      check(
+        await db()
+          .from("habit_checks")
+          .upsert(
+            { habit_id: habitId, done_on: day },
+            { onConflict: "habit_id,done_on", ignoreDuplicates: true },
+          ),
+        "tachar tarea",
+      );
+    } else {
+      check(
+        await db().from("habit_checks").delete().eq("habit_id", habitId).eq("done_on", day),
+        "destachar tarea",
+      );
+    }
   },
 };

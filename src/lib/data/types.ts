@@ -6,6 +6,8 @@ import type {
   ClientService,
   ColdContactDay,
   CurrencyCode,
+  Habit,
+  HabitCheck,
   Payment,
   Prospect,
 } from "../types";
@@ -18,6 +20,7 @@ export type ClientInput = Omit<
 >;
 export type ServiceInput = Omit<ClientService, "id" | "client_id">;
 export type AdMovementInput = Omit<AdMovement, "id" | "client_id">;
+export type HabitInput = Omit<Habit, "id">;
 
 /**
  * Una sola interfaz de datos, dos implementaciones:
@@ -74,4 +77,14 @@ export interface Repo {
   listColdContacts(): Promise<ColdContactDay[]>;
   /** Suma (o resta, para corregir) contactados a un día. Nunca baja de 0. */
   addColdContacts(day: string, delta: number): Promise<void>;
+
+  /** Rutina: todas las tareas, también las versiones que ya terminaron. */
+  listHabits(): Promise<Habit[]>;
+  createHabit(input: HabitInput): Promise<Habit>;
+  updateHabit(id: string, patch: Partial<HabitInput>): Promise<void>;
+  /** Borrado definitivo, con sus tachadas. Sólo para tareas de hoy. */
+  deleteHabit(id: string): Promise<void>;
+  listHabitChecks(): Promise<HabitCheck[]>;
+  /** Tachar o destachar una tarea en un día. Repetirlo no duplica nada. */
+  setHabitCheck(habitId: string, day: string, done: boolean): Promise<void>;
 }

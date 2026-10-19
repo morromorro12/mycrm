@@ -136,6 +136,34 @@ export interface ColdContactDay {
   contacts: number;
 }
 
+/**
+ * Tarea fija de la rutina semanal. `check` se tacha a mano; `frio` se tacha
+ * sola cuando el contador de contactados en frío del día llega a la meta.
+ */
+export type HabitKind = "check" | "frio";
+
+/**
+ * Una tarea que se repite ciertos días de la semana. Cambiarle los días no
+ * reescribe el pasado: la versión vieja termina (`ends_on`) y arranca otra.
+ */
+export interface Habit {
+  id: string;
+  title: string;
+  kind: HabitKind;
+  /** Qué días toca: 1 = lunes … 7 = domingo. */
+  weekdays: number[];
+  position: number;
+  starts_on: string; // YYYY-MM-DD
+  /** El primer día en que ya no toca. null = vigente. */
+  ends_on: string | null;
+}
+
+/** Una tarea tachada en un día. */
+export interface HabitCheck {
+  habit_id: string;
+  done_on: string; // YYYY-MM-DD
+}
+
 /** Cliente con sus servicios y pagos ya resueltos. Lo que consumen las vistas. */
 export interface ClientFull extends Client {
   services: ClientService[];

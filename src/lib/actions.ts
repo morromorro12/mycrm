@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { currentPeriod, todayISO } from "./dates";
+import { currentPeriod, isISODate, todayISO } from "./dates";
 import { amountDue, isFreeMonth } from "./billing";
 import { repo } from "./data";
 import type {
   AdCard,
   CurrencyCode,
+  HabitKind,
   LeadSource,
   ProspectStage,
   ServiceInterest,
@@ -455,5 +456,103 @@ export async function addColdContacts(delta: number) {
   const n = Math.trunc(delta);
   if (!Number.isFinite(n) || n === 0 || Math.abs(n) > 1000) return;
   await repo().addColdContacts(todayISO(), n);
+  refresh();
+}
+
+// ── Rutina semanal ──────────────────────────────────────────────────────────
+
+/** Tachar o destachar. Sólo hasta hoy: lo de mañana se tacha mañana. */
+export async function setHabitDone(habitId: string, day: string, done: boolean) {
+  if (!isISODate(day) || day > todayISO()) return;
+  await repo().setHabitCheck(habitId, day, done === true);
+  refresh();
+}
+
+/** Título y días de una tarea, ya limpios; null si falta algo. */
+function cleanHabit(input: { title: unknown; weekdays: unknown }) {
+  const title = String(input.title ?? "").trim().replace(/\s+/g, " ").slice(0, 80);
+  const raw = Array.isArray(input.weekdays) ? input.weekdays : [];
+  const weekdays = [...new Set(raw.map(Number))]
+    .filter((n) => Number.isInteger(n) && n >= 1 && n <= 7)
+    .sort((a, b) => a - b);
+  return title && weekdays.length > 0 ? { title, weekdays } : null;
+}
+
+async function activeHabits() {
+  return (await repo().listHabits())
+    .filter((h) => h.ends_on === null)
+    .sort((a, b) => a.position - b.position);
+}
+
+export async function addHabit(input: { title: string; weekdays: number[]; kind?: HabitKind }) {
+  const clean = cleanHabit(input);
+  if (!clean) return;
+  const current = await activeHabits();
+  await repo().createHabit({
+    ...clean,
+    kind: input.kind === "frio" ? "frio" : "check",
+    position: current.reduce((max, h) => Math.max(max, h.position + 1), 0),
+    starts_on: todayISO(),
+    ends_on: null,
+  });
+  refresh();
+}
+
+/**
+ * Cambiar el título se hace en el lugar. Cambiar los días, de hoy en
+ * adelante: la versión vieja termina hoy y arranca una nueva, así los días
+ * que ya pasaron quedan como estaban y la racha no se toca. Lo tachado hoy
+ * pasa a la versión nueva.
+ */
+export async function updateHabit(id: string, input: { title: string; weekdays: number[] }) {
+  const clean = cleanHabit(input);
+  const h = (await activeHabits()).find((x) => x.id === id);
+  if (!clean || !h) return;
+
+  const today = todayISO();
+  const sameDays = clean.weekdays.join() === [...h.weekdays].sort((a, b) => a - b).join();
+  if (sameDays || h.starts_on >= today) {
+    await repo().updateHabit(id, clean);
+  } else {
+    await repo().updateHabit(id, { ends_on: today });
+    const next = await repo().createHabit({
+      ...clean,
+      kind: h.kind,
+      position: h.position,
+      starts_on: today,
+      ends_on: null,
+    });
+    const checks = await repo().listHabitChecks();
+    if (checks.some((c) => c.habit_id === id && c.done_on === today)) {
+      await repo().setHabitCheck(id, today, false);
+      await repo().setHabitCheck(next.id, today, true);
+    }
+  }
+  refresh();
+}
+
+/**
+ * Sacar una tarea de la rutina. Si la creaste hoy se borra; si no, deja de
+ * tocar desde hoy y los días pasados la siguen mostrando tal cual.
+ */
+export async function removeHabit(id: string) {
+  const h = (await activeHabits()).find((x) => x.id === id);
+  if (!h) return;
+  const today = todayISO();
+  if (h.starts_on >= today) await repo().deleteHabit(id);
+  else await repo().updateHabit(id, { ends_on: today });
+  refresh();
+}
+
+/** Subir o bajar una tarea en la lista. Renumera todas para que no haya empates. */
+export async function moveHabit(id: string, dir: -1 | 1) {
+  const list = await activeHabits();
+  const i = list.findIndex((h) => h.id === id);
+  const j = i + (dir === -1 ? -1 : 1);
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  await Promise.all(
+    list.map((h, n) => (h.position === n ? null : repo().updateHabit(h.id, { position: n }))),
+  );
   refresh();
 }

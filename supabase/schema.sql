@@ -181,6 +181,41 @@ create table if not exists cold_contacts (
   updated_at   timestamptz not null default now()
 );
 
+-- ── Rutina semanal ──────────────────────────────────────────────────────────
+-- Las tareas fijas de cada día (las que se repiten siempre, no las puntuales)
+-- y cuáles tachaste. De ahí sale la racha de días con todo tachado.
+--
+-- Cambiar los días de una tarea no reescribe el pasado: la versión vieja
+-- termina hoy (ends_on) y arranca otra con los días nuevos. Así una racha
+-- nunca se corta por acomodar la rutina.
+do $$ begin
+  -- 'check' = se tacha a mano. 'frio' = se tacha sola cuando los
+  -- contactados en frío del día (cold_contacts) llegan a la meta.
+  create type habit_kind as enum ('check','frio');
+exception when duplicate_object then null; end $$;
+
+create table if not exists habits (
+  id         uuid        primary key default gen_random_uuid(),
+  title      text        not null check (length(btrim(title)) between 1 and 80),
+  kind       habit_kind  not null default 'check',
+  -- Qué días toca: 1 = lunes … 7 = domingo.
+  weekdays   smallint[]  not null default '{1,2,3,4,5}'
+             check (cardinality(weekdays) > 0 and weekdays <@ '{1,2,3,4,5,6,7}'),
+  position   integer     not null default 0,
+  starts_on  date        not null default current_date,
+  ends_on    date,       -- el primer día en que ya no toca; null = vigente
+  created_at timestamptz not null default now(),
+  check (ends_on is null or ends_on > starts_on)
+);
+
+create table if not exists habit_checks (
+  habit_id   uuid        not null references habits(id) on delete cascade,
+  done_on    date        not null,
+  created_at timestamptz not null default now(),
+  primary key (habit_id, done_on)
+);
+create index if not exists habit_checks_day_idx on habit_checks (done_on);
+
 -- ── Migración ───────────────────────────────────────────────────────────────
 -- Si creaste las tablas con una versión anterior de este archivo, esto agrega
 -- la columna `archived` sin tocar tus datos. Si ya la tenés, no hace nada.
@@ -277,11 +312,16 @@ alter table payments        enable row level security;
 alter table prospects       enable row level security;
 alter table ad_movements    enable row level security;
 alter table cold_contacts   enable row level security;
+alter table habits          enable row level security;
+alter table habit_checks    enable row level security;
 
 do $$
 declare t text;
 begin
-  foreach t in array array['clients','client_services','payments','prospects','ad_movements','cold_contacts'] loop
+  foreach t in array array[
+    'clients','client_services','payments','prospects','ad_movements','cold_contacts',
+    'habits','habit_checks'
+  ] loop
     execute format('drop policy if exists %I on %I', t || '_anon_all', t);
     execute format(
       'create policy %I on %I for all to anon, authenticated using (true) with check (true)',

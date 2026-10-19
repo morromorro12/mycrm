@@ -73,7 +73,8 @@ toca los datos.
 
 | Pantalla | Para qué |
 |---|---|
-| **Hoy** | MRR, total cobrado histórico, cobrado vs pendiente del mes, y la lista de lo que necesita atención hoy |
+| **Hoy** | La rutina del día para tachar, MRR, total cobrado histórico, cobrado vs pendiente del mes, y la lista de lo que necesita atención hoy |
+| **Semana** | Las tareas fijas de cada día (las que se repiten, no las puntuales), para ir tachándolas, con racha de días completos y semanas perfectas |
 | **Pipeline** | Kanban de prospectos. Arrastrá las tarjetas, o cambiá la etapa con el menú de cada una |
 | **Clientes** | Tabla con semáforo de pago y botón de un toque para marcar cobrado |
 | **Anuncios** | Mockup. Todavía no hay conexión con Meta |
@@ -179,6 +180,16 @@ cada cobro:
 Debajo va el detalle mes por mes. Los totales se calculan sobre las filas de
 `payments`, así que reflejan lo que efectivamente entró, no lo contratado.
 
+### La rutina no reescribe el pasado
+
+La racha suma un día cada vez que tachás todo lo de ese día. Un día sin tareas
+no la corta, y hoy tampoco mientras no termine. Para que acomodar la rutina
+nunca te rompa una racha, los cambios rigen de hoy en adelante: si le cambiás
+los días a una tarea, la versión vieja termina hoy (`habits.ends_on`) y arranca
+otra; si la sacás, deja de tocar desde hoy pero los días pasados la siguen
+mostrando. "Contactar 10 negocios en frío" se tacha sola con el contador de
+Metas, para no anotar lo mismo dos veces.
+
 ### Nada se borra de un toque
 
 El botón de las fichas dice **Archivar**, no borrar: el cliente o prospecto sale
@@ -229,6 +240,8 @@ supabase/schema.sql          El esquema. Pegar en el SQL Editor.
 src/lib/
   types.ts                   Tipos del dominio + etiquetas en español
   billing.ts                 Estado de pago, MRR, "atención hoy"  ← la lógica
+  metas.ts                   Logros, estrellas y niveles de Metas
+  rutina.ts                  Rutina semanal: qué toca cada día y la racha
   dates.ts                   Fechas como 'YYYY-MM-DD', hoy en hora uruguaya
   money.ts                   Totales y formato por moneda
   whatsapp.ts                Teléfono uruguayo → link de wa.me
