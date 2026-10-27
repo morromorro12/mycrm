@@ -8,6 +8,7 @@ import type {
   HabitCheck,
   Payment,
   Prospect,
+  Todo,
 } from "../types";
 
 /** Fecha desplazada N días respecto de hoy, como 'YYYY-MM-DD'. */
@@ -328,4 +329,21 @@ export function seedHabitChecks(): HabitCheck[] {
     if (d !== -10 && d !== -9) checks.push({ habit_id: "h7", done_on: shift(d) });
   }
   return checks;
+}
+
+/** Pendientes de ejemplo: unos por hacer, uno tachado ayer. */
+export function seedTodos(): Todo[] {
+  const at = (days: number, hour: number) => `${shift(days)}T${String(hour).padStart(2, "0")}:00:00-03:00`;
+  const t = (id: string, title: string, created: string, done_at: string | null = null): Todo => ({
+    id,
+    title,
+    done_at,
+    created_at: created,
+  });
+  return [
+    t("t1", "Mandarle el presupuesto de la web a la panadería", at(0, 9)),
+    t("t2", "Llamar a Martín por la pauta de noviembre", at(-1, 18)),
+    t("t3", "Pedirle las fotos del menú nuevo a La Parrilla", at(-2, 11)),
+    t("t4", "Renovar el dominio de Uruclub", at(-3, 10), at(-1, 15)),
+  ];
 }

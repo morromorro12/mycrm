@@ -93,7 +93,7 @@ export function Checklist({
   );
 }
 
-function Tick({ done, muted = false }: { done: boolean; muted?: boolean }) {
+export function Tick({ done, muted = false }: { done: boolean; muted?: boolean }) {
   return (
     <span
       aria-hidden

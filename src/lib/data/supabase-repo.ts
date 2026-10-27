@@ -7,6 +7,7 @@ import type {
   HabitCheck,
   Payment,
   Prospect,
+  Todo,
 } from "../types";
 import type { Repo } from "./types";
 
@@ -338,5 +339,32 @@ export const supabaseRepo: Repo = {
         "destachar tarea",
       );
     }
+  },
+
+  async listTodos(doneSince) {
+    const r = await db()
+      .from("todos")
+      .select("*")
+      .or(`done_at.is.null,done_at.gte.${doneSince}`)
+      .order("created_at", { ascending: false });
+    return (check(r, "listar pendientes") ?? []) as Todo[];
+  },
+
+  async addTodos(titles) {
+    if (!titles.length) return;
+    // Con la misma hora, los de un mismo audio saldrían en cualquier orden: un
+    // milisegundo de diferencia y se leen en el orden en que los dijiste.
+    const now = Date.now();
+    const rows = titles.map((title, i) => ({ title, created_at: new Date(now - i).toISOString() }));
+    check(await db().from("todos").insert(rows), "anotar pendientes");
+  },
+
+  async setTodoDone(id, done) {
+    const done_at = done ? new Date().toISOString() : null;
+    check(await db().from("todos").update({ done_at }).eq("id", id), "tachar pendiente");
+  },
+
+  async deleteTodo(id) {
+    check(await db().from("todos").delete().eq("id", id), "borrar pendiente");
   },
 };

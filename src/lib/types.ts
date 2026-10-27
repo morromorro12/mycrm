@@ -169,6 +169,15 @@ export interface HabitCheck {
   done_on: string; // YYYY-MM-DD
 }
 
+/** Un pendiente: algo puntual para hacer una vez y tachar. */
+export interface Todo {
+  id: string;
+  title: string;
+  /** Cuándo lo tachaste. null = pendiente. */
+  done_at: string | null;
+  created_at: string;
+}
+
 /** Cliente con sus servicios y pagos ya resueltos. Lo que consumen las vistas. */
 export interface ClientFull extends Client {
   services: ClientService[];

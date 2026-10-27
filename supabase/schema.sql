@@ -219,6 +219,19 @@ create table if not exists habit_checks (
 );
 create index if not exists habit_checks_day_idx on habit_checks (done_on);
 
+-- ── Pendientes ──────────────────────────────────────────────────────────────
+-- Lo puntual, lo que no se repite: se anota (a mano o con un audio al bot de
+-- Telegram) y se tacha cuando está hecho.
+create table if not exists todos (
+  id         uuid        primary key default gen_random_uuid(),
+  title      text        not null check (length(btrim(title)) between 1 and 200),
+  done_at    timestamptz,                  -- null = pendiente
+  created_at timestamptz not null default now()
+);
+-- La pantalla pide lo pendiente y lo hecho hace poco: lo viejo tachado queda
+-- guardado pero no se lee.
+create index if not exists todos_done_idx on todos (done_at);
+
 -- ── Migración ───────────────────────────────────────────────────────────────
 -- Si creaste las tablas con una versión anterior de este archivo, esto agrega
 -- la columna `archived` sin tocar tus datos. Si ya la tenés, no hace nada.
@@ -321,13 +334,14 @@ alter table ad_movements    enable row level security;
 alter table cold_contacts   enable row level security;
 alter table habits          enable row level security;
 alter table habit_checks    enable row level security;
+alter table todos           enable row level security;
 
 do $$
 declare t text;
 begin
   foreach t in array array[
     'clients','client_services','payments','prospects','ad_movements','cold_contacts',
-    'habits','habit_checks'
+    'habits','habit_checks','todos'
   ] loop
     execute format('drop policy if exists %I on %I', t || '_anon_all', t);
     execute format(

@@ -17,7 +17,8 @@ if [ -n "$bad" ]; then
 fi
 
 # 2) Claves dentro del contenido, venga del archivo que venga.
-leak=$(git diff --cached -U0 | grep -nE 'sb_secret_[A-Za-z0-9_]{8}|sb_publishable_[A-Za-z0-9_]{8}|eyJhbGciOi[A-Za-z0-9_-]{20}|EAA[A-Za-z0-9]{40}')
+# Supabase, Meta, Anthropic / OpenAI y el token del bot de Telegram.
+leak=$(git diff --cached -U0 | grep -nE 'sb_secret_[A-Za-z0-9_]{8}|sb_publishable_[A-Za-z0-9_]{8}|eyJhbGciOi[A-Za-z0-9_-]{20}|EAA[A-Za-z0-9]{40}|sk-(ant-|proj-)?[A-Za-z0-9_-]{20}|[0-9]{8,10}:AA[A-Za-z0-9_-]{30}')
 if [ -n "$leak" ]; then
   echo "✋ Commit frenado: parece haber una clave en el contenido"
   printf '%s\n' "$leak" | head -5 | sed 's/^/   /'

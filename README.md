@@ -74,6 +74,7 @@ toca los datos.
 | Pantalla | Para qué |
 |---|---|
 | **Hoy** | La rutina del día para tachar, MRR, total cobrado histórico, cobrado vs pendiente del mes, y la lista de lo que necesita atención hoy |
+| **Por hacer** | Lo puntual, para hacer una vez: se anota acá o con un audio al bot de Telegram, y se tacha |
 | **Semana** | Las tareas que se repiten (no las puntuales), por día o "X veces por semana", para ir tachándolas, con racha de días completos y semanas perfectas |
 | **Pipeline** | Kanban de prospectos. Arrastrá las tarjetas, o cambiá la etapa con el menú de cada una |
 | **Clientes** | Tabla con semáforo de pago y botón de un toque para marcar cobrado |
@@ -88,6 +89,55 @@ Atajos pensados para usarlo entre reunión y reunión:
   último contacto o posponen el seguimiento sin abrir la ficha.
 - **WhatsApp** en todos lados: abre `wa.me` con el número ya cargado y un saludo
   con el nombre del contacto.
+
+---
+
+## Por hacer, desde Telegram
+
+Le mandás un audio al bot ("tengo que llamar a Ana por la factura y pasarle el
+logo a Uruclub") y te contesta con lo que anotó, ya partido:
+
+```
+Anotado:
+• Llamar a Ana por la factura
+• Pasarle el logo a Uruclub
+```
+
+Aparece arriba de todo en **Por hacer**, para tachar cuando lo hagas. Un texto
+también sirve: entra tal cual, un pendiente por renglón. Lo tachado se sigue
+viendo una semana abajo de la lista, por si lo tachaste sin querer.
+
+Un audio pasa por dos lados: **OpenAI** lo transcribe (como en los bots de
+GoPet y Tankin) y **Claude** lo parte en pendientes y le saca las muletillas.
+Los nombres de tus clientes y prospectos van como pista, para que "Uruclub" no
+salga "uru club". Sin clave de Anthropic, cada audio entra entero como un solo
+pendiente.
+
+### Conectar el bot (una vez)
+
+1. **Un bot nuevo.** En Telegram, hablale a **@BotFather** → `/newbot` → copiá
+   el token. Tiene que ser uno nuevo: un bot manda sus mensajes a una sola app,
+   y el de GoPet ya está ocupado.
+2. **Variables** en Vercel → el proyecto → **Settings → Environment Variables**:
+
+   | Variable | Qué va |
+   |---|---|
+   | `TELEGRAM_BOT_TOKEN` | El token del paso 1 |
+   | `TELEGRAM_CHAT_ID` | Tu id de Telegram: el mismo número que `TELEGRAM_CHAT_ID` en GoPet. Si no lo tenés, dejala vacía y escribile al bot: te lo contesta |
+   | `OPENAI_API_KEY` | Para escuchar audios. Sirve la misma que usa GoPet |
+   | `ANTHROPIC_API_KEY` | Para partir el audio en pendientes. Opcional |
+
+3. **Dejar pasar a Telegram.** La protección de Vercel le pediría login.
+   **Settings → Deployment Protection → Protection Bypass for Automation** →
+   generá el secreto. Vercel lo pasa solo a la app.
+4. **Redeploy**: las variables nuevas recién se ven en el deploy siguiente.
+5. Abrí **https://mycrm-alfonso-s-projects14.vercel.app/api/telegram** una vez.
+   Le dice a Telegram adónde mandar los mensajes y muestra qué falta. Si
+   cambiás el token o algo no anda, volvé a abrirla.
+
+El bot es público (cualquiera lo puede encontrar), pero sólo anota lo que le
+mandás vos: lo que llega de otro chat se ignora. Y el webhook sólo acepta
+pedidos que traen el secreto que la app le dio a Telegram en el paso 5.
 
 ---
 
@@ -248,6 +298,9 @@ src/lib/
   billing.ts                 Estado de pago, MRR, "atención hoy"  ← la lógica
   metas.ts                   Logros, estrellas y niveles de Metas
   rutina.ts                  Rutina semanal: qué toca cada día y la racha
+  pendientes.ts              Por hacer: limpieza de títulos, cuánto se ve lo tachado
+  dictado.ts                 Audio → texto (OpenAI) → pendientes (Claude)
+  telegram.ts                API de Telegram y el secreto del webhook
   dates.ts                   Fechas como 'YYYY-MM-DD', hoy en hora uruguaya
   money.ts                   Totales y formato por moneda
   whatsapp.ts                Teléfono uruguayo → link de wa.me
@@ -260,6 +313,7 @@ src/lib/
     index.ts                 Elige una u otra según haya claves
 
 src/app/                     Rutas
+src/app/api/telegram/        El webhook del bot (POST) y su conexión (GET)
 src/components/              UI
 src/proxy.ts                 Candado opcional, apagado por defecto
 ```

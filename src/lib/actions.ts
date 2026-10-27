@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { currentPeriod, isISODate, todayISO, weekStart } from "./dates";
 import { amountDue, isFreeMonth } from "./billing";
 import { repo } from "./data";
+import { cleanTitles } from "./pendientes";
 import type {
   AdCard,
   CurrencyCode,
@@ -569,5 +570,25 @@ export async function moveHabit(id: string, dir: -1 | 1) {
   await Promise.all(
     list.map((h, n) => (h.position === n ? null : repo().updateHabit(h.id, { position: n }))),
   );
+  refresh();
+}
+
+// ── Pendientes ──────────────────────────────────────────────────────────────
+
+/** Anotar a mano. Cada renglón es un pendiente aparte. */
+export async function addTodo(text: string) {
+  const titles = cleanTitles(String(text ?? "").split("\n"));
+  if (!titles.length) return;
+  await repo().addTodos(titles);
+  refresh();
+}
+
+export async function setTodoDone(id: string, done: boolean) {
+  await repo().setTodoDone(id, done === true);
+  refresh();
+}
+
+export async function deleteTodo(id: string) {
+  await repo().deleteTodo(id);
   refresh();
 }

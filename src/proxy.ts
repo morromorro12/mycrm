@@ -14,6 +14,9 @@ export default function proxy(req: NextRequest) {
   const password = process.env.CRM_PASSWORD?.trim();
   if (!password) return NextResponse.next();
 
+  // Telegram tampoco tiene la cookie: el webhook se cuida solo con su secreto.
+  if (req.method === "POST" && req.nextUrl.pathname === "/api/telegram") return NextResponse.next();
+
   if (req.cookies.get(COOKIE)?.value === password) return NextResponse.next();
 
   // Se puede desbloquear con ?clave=... una sola vez; después queda la cookie.

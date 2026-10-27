@@ -7,6 +7,7 @@ import type {
   HabitCheck,
   Payment,
   Prospect,
+  Todo,
 } from "../types";
 import {
   seedClients,
@@ -14,6 +15,7 @@ import {
   seedHabitChecks,
   seedHabits,
   seedProspects,
+  seedTodos,
 } from "./seed";
 import type { ClientInput, ProspectInput, Repo, ServiceInput } from "./types";
 
@@ -30,6 +32,7 @@ interface Store {
   coldContacts: ColdContactDay[];
   habits: Habit[];
   habitChecks: HabitCheck[];
+  todos: Todo[];
   seq: number;
 }
 
@@ -43,13 +46,15 @@ function store(): Store {
       coldContacts: seedColdContacts(),
       habits: seedHabits(),
       habitChecks: seedHabitChecks(),
+      todos: seedTodos(),
       seq: 1000,
     };
   }
-  // Un store de antes de Metas o de la rutina, que sobrevivió a un hot-reload.
+  // Un store de antes de Metas, la rutina o Pendientes, que sobrevivió a un hot-reload.
   g.__crmDemo.coldContacts ??= seedColdContacts();
   g.__crmDemo.habits ??= seedHabits();
   g.__crmDemo.habitChecks ??= seedHabitChecks();
+  g.__crmDemo.todos ??= seedTodos();
   return g.__crmDemo;
 }
 
@@ -256,5 +261,36 @@ export const demoRepo: Repo = {
     const s = store();
     s.habitChecks = s.habitChecks.filter((c) => !(c.habit_id === hid && c.done_on === day));
     if (done) s.habitChecks.push({ habit_id: hid, done_on: day });
+  },
+
+  async listTodos(doneSince) {
+    const since = Date.parse(doneSince);
+    return clone(
+      store()
+        .todos.filter((t) => t.done_at === null || Date.parse(t.done_at) >= since)
+        .sort((a, b) => b.created_at.localeCompare(a.created_at)),
+    );
+  },
+
+  async addTodos(titles) {
+    const now = Date.now();
+    store().todos.push(
+      ...titles.map((title, i) => ({
+        id: id(),
+        title,
+        done_at: null,
+        created_at: new Date(now - i).toISOString(),
+      })),
+    );
+  },
+
+  async setTodoDone(tid, done) {
+    const t = store().todos.find((x) => x.id === tid);
+    if (t) t.done_at = done ? new Date().toISOString() : null;
+  },
+
+  async deleteTodo(tid) {
+    const s = store();
+    s.todos = s.todos.filter((t) => t.id !== tid);
   },
 };

@@ -10,6 +10,7 @@ import type {
   HabitCheck,
   Payment,
   Prospect,
+  Todo,
 } from "../types";
 
 export type ProspectInput = Omit<Prospect, "id" | "converted_client_id" | "archived">;
@@ -87,4 +88,10 @@ export interface Repo {
   listHabitChecks(): Promise<HabitCheck[]>;
   /** Tachar o destachar una tarea en un día. Repetirlo no duplica nada. */
   setHabitCheck(habitId: string, day: string, done: boolean): Promise<void>;
+
+  /** Pendientes: todo lo sin tachar, y lo tachado desde `doneSince`. */
+  listTodos(doneSince: string): Promise<Todo[]>;
+  addTodos(titles: string[]): Promise<void>;
+  setTodoDone(id: string, done: boolean): Promise<void>;
+  deleteTodo(id: string): Promise<void>;
 }

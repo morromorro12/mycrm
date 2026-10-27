@@ -47,6 +47,13 @@ export const IconWeek = ({ className = base }: P) => (
   </svg>
 );
 
+export const IconTodo = ({ className = base }: P) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+    <path d="m3.5 6.5 1.8 1.8L8.5 5M3.5 16.5l1.8 1.8 3.2-3.3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 7h8.5M12 17h8.5" strokeLinecap="round" />
+  </svg>
+);
+
 /** Llama de la racha: llena si está encendida. */
 export const IconFlame = ({ className = base, filled = false }: P & { filled?: boolean }) => (
   <svg viewBox="0 0 24 24" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" className={className} aria-hidden>
