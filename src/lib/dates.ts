@@ -99,6 +99,19 @@ export function weekdayDate(iso: string): string {
   return `${WEEKDAY_NAMES[isoWeekday(iso) - 1]} ${dayOfMonth(iso)}`;
 }
 
+/** '2026-11-13' → 'jueves 13 nov'; hoy y mañana, con nombre. */
+export function dayLabel(iso: string, today = todayISO()): string {
+  const d = daysBetween(today, iso);
+  if (d === 0) return "hoy";
+  if (d === 1) return "mañana";
+  return `${WEEKDAY_NAMES[isoWeekday(iso) - 1]} ${shortDate(iso)}`;
+}
+
+/** 'jueves' para '2026-11-13'. */
+export function weekdayName(iso: string): string {
+  return WEEKDAY_NAMES[isoWeekday(iso) - 1];
+}
+
 /** Lunes '2026-10-19' → '19 al 25 de octubre'; si cruza de mes, con los dos. */
 export function weekRangeLabel(monday: string): string {
   const sunday = addDays(monday, 6);

@@ -25,13 +25,6 @@ export const IconClients = ({ className = base }: P) => (
   </svg>
 );
 
-export const IconAds = ({ className = base }: P) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-    <path d="M4 14V10a1 1 0 0 1 1-1h3l6-4v14l-6-4H5a1 1 0 0 1-1-1Z" strokeLinejoin="round" />
-    <path d="M18 9.5a4 4 0 0 1 0 5" strokeLinecap="round" />
-  </svg>
-);
-
 export const IconGoals = ({ className = base }: P) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
     <path d="M7 4h10v5a5 5 0 0 1-10 0V4Z" strokeLinejoin="round" />

@@ -108,6 +108,22 @@ export function seedProspects(): Prospect[] {
       archived: false,
     },
     {
+      // El que se olvida: abierto y sin próximo paso.
+      id: "p7",
+      business_name: "Bar La Pasiva",
+      contact_name: "Diego",
+      phone: "093 118 240",
+      service_interest: "web",
+      stage: "demo_enviada",
+      source: "frio",
+      last_contact_at: shift(-12),
+      next_action: null,
+      next_action_at: null,
+      notes: "Le gustó la demo, quedó en contestar.",
+      converted_client_id: null,
+      archived: false,
+    },
+    {
       id: "p6",
       business_name: "Heladería Crema del Sur",
       contact_name: "Valentina Cabrera",

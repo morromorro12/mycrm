@@ -76,9 +76,8 @@ toca los datos.
 | **Hoy** | La rutina del día para tachar, MRR, total cobrado histórico, cobrado vs pendiente del mes, y la lista de lo que necesita atención hoy |
 | **Por hacer** | Lo puntual, para hacer una vez: se anota acá o con un audio al bot de Telegram, y se tacha |
 | **Semana** | Las tareas que se repiten (no las puntuales), por día o "X veces por semana", para ir tachándolas, con racha de días completos y semanas perfectas |
-| **Pipeline** | Kanban de prospectos. Arrastrá las tarjetas, o cambiá la etapa con el menú de cada una |
+| **Pipeline** | Kanban de prospectos. Arrastrá las tarjetas, cambiá la etapa con el menú de cada una, o contáselo al bot de Telegram. Arriba, los que quedaron sin próximo paso |
 | **Clientes** | Tabla con semáforo de pago y botón de un toque para marcar cobrado |
-| **Anuncios** | Mockup. Todavía no hay conexión con Meta |
 | **Archivados** | Papelera: restaurar lo archivado, o borrarlo de verdad |
 
 Atajos pensados para usarlo entre reunión y reunión:
@@ -92,26 +91,58 @@ Atajos pensados para usarlo entre reunión y reunión:
 
 ---
 
-## Por hacer, desde Telegram
+## El bot de Telegram: Pipeline y Por hacer
 
-Le mandás un audio al bot ("tengo que llamar a Ana por la factura y pasarle el
-logo a Uruclub") y te contesta con lo que anotó, ya partido:
+Le mandás un audio o un texto al bot y él separa dos cosas:
+
+- **Lo de un prospecto va al Pipeline**: a quién contactaste, en qué etapa
+  quedó, qué sigue y cuándo.
+- **Lo demás va a Por hacer**, para tachar.
+
+Se le habla con una fórmula simple — **negocio, qué pasó, qué sigue y
+cuándo** — pero no hace falta decirla exacta:
 
 ```
-Anotado:
-• Llamar a Ana por la factura
-• Pasarle el logo a Uruclub
+«La Pasiva: le mandé la demo, le gustó. Llamarlo el jueves.
+ Y acordate de comprar tóner.»
+
+Pipeline:
+• Bar La Pasiva — Demo enviada (antes Contactado)
+  → Llamarlo · jueves 13 nov
+
+Por hacer:
+• Comprar tóner
 ```
 
-Aparece arriba de todo en **Por hacer**, para tachar cuando lo hagas. Un texto
-también sirve: entra tal cual, un pendiente por renglón. Lo tachado se sigue
-viendo una semana abajo de la lista, por si lo tachaste sin querer.
+| Decís | Pasa |
+|---|---|
+| «Nuevo: Parrilla El Fogón, Martín, 099 123 456, quiere web. Le escribí por Instagram» | Crea el prospecto con contacto, teléfono, interés y fuente |
+| «le mandé la demo» · «le pasé la propuesta» · «lo está pensando» · «cerró» · «dijo que no» | Lo mueve a esa etapa |
+| «Pasame La Nonna al lunes» | Cambia sólo la fecha del próximo paso |
+| «Diego de La Pasiva me contestó» | Lo reconoce por el contacto, sin tildes ni mayúsculas, y aunque digas sólo "La Pasiva" |
+| «¿A quién tengo que escribirle?» o `/seguimiento` | Te lista los de hoy y atrasados, los sin próximo paso y los de la semana |
+
+Reglas para que **ningún prospecto se te olvide**:
+
+- **Si no decís cuándo seguir, lo pone para dentro de 3 días** y te avisa
+  "(no dijiste cuándo)". Ninguno queda sin fecha.
+- Si hablaste con él y no decís qué sigue, el próximo paso pasa a ser "Hacer
+  seguimiento", salvo que ya tuviera uno con fecha futura: ese se respeta.
+- Lo que pasó se anota con fecha arriba de las notas de la ficha
+  ("11 nov: Le mandé la demo…"), así ves la historia.
+- Cada respuesta termina con un aviso si tenés prospectos atrasados o sin
+  próximo paso. Los que ya estaban sin fecha aparecen en el **Pipeline** y en
+  **Hoy** (debajo de Atención hoy), el más olvidado primero, con botones
+  **Mañana** y **+3d** para ponerles fecha de un toque.
+- Si nombra a uno que no existe, lo crea; si se parece a uno solo, usa ese.
+  Ante dos parecidos, crea uno nuevo antes que pisar al equivocado.
 
 Un audio pasa por dos lados: **OpenAI** lo transcribe (como en los bots de
-GoPet y Tankin) y **Claude** lo parte en pendientes y le saca las muletillas.
-Los nombres de tus clientes y prospectos van como pista, para que "Uruclub" no
-salga "uru club". Sin clave de Anthropic, cada audio entra entero como un solo
-pendiente.
+GoPet y Tankin) y **Claude** lo ordena: reconoce a qué prospecto te referís,
+pasa "el jueves" a una fecha y saca las muletillas. Los nombres de tus clientes
+y prospectos van como pista, para que "Uruclub" no salga "uru club". Sin clave
+de Anthropic, todo va a Por hacer (cada audio entero como un solo pendiente) y
+el Pipeline no se toca.
 
 ### Conectar el bot (una vez)
 
@@ -125,15 +156,16 @@ pendiente.
    | `TELEGRAM_BOT_TOKEN` | El token del paso 1 |
    | `TELEGRAM_CHAT_ID` | Tu id de Telegram: el mismo número que `TELEGRAM_CHAT_ID` en GoPet. Si no lo tenés, dejala vacía y escribile al bot: te lo contesta |
    | `OPENAI_API_KEY` | Para escuchar audios. Sirve la misma que usa GoPet |
-   | `ANTHROPIC_API_KEY` | Para partir el audio en pendientes. Opcional |
+   | `ANTHROPIC_API_KEY` | Para entender qué va al Pipeline y qué a Por hacer. Sin ella, todo va a Por hacer |
 
 3. **Dejar pasar a Telegram.** La protección de Vercel le pediría login.
    **Settings → Deployment Protection → Protection Bypass for Automation** →
    generá el secreto. Vercel lo pasa solo a la app.
 4. **Redeploy**: las variables nuevas recién se ven en el deploy siguiente.
 5. Abrí **https://mycrm-alfonso-s-projects14.vercel.app/api/telegram** una vez.
-   Le dice a Telegram adónde mandar los mensajes y muestra qué falta. Si
-   cambiás el token o algo no anda, volvé a abrirla.
+   Le dice a Telegram adónde mandar los mensajes, carga el menú de comandos
+   (`/seguimiento`, `/ayuda`) y muestra qué falta. Si cambiás el token o algo
+   no anda, volvé a abrirla.
 
 El bot es público (cualquiera lo puede encontrar), pero sólo anota lo que le
 mandás vos: lo que llega de otro chat se ignora. Y el webhook sólo acepta
@@ -299,13 +331,14 @@ src/lib/
   metas.ts                   Logros, estrellas y niveles de Metas
   rutina.ts                  Rutina semanal: qué toca cada día y la racha
   pendientes.ts              Por hacer: limpieza de títulos, cuánto se ve lo tachado
-  dictado.ts                 Audio → texto (OpenAI) → pendientes (Claude)
+  dictado.ts                 Audio → texto (OpenAI) → prospectos y pendientes (Claude)
+  anotar.ts                  Lo que el bot hace en el Pipeline, y sus respuestas
+  seguimiento.ts             Atrasados y sin próximo paso: que ninguno se olvide
   telegram.ts                API de Telegram y el secreto del webhook
   dates.ts                   Fechas como 'YYYY-MM-DD', hoy en hora uruguaya
   money.ts                   Totales y formato por moneda
   whatsapp.ts                Teléfono uruguayo → link de wa.me
   actions.ts                 Server actions (todas las escrituras)
-  ads-mock.ts                Mockup de Ads + dónde va la API de Meta
   data/
     types.ts                 La interfaz Repo
     supabase-repo.ts         Implementación real
@@ -320,19 +353,3 @@ src/proxy.ts                 Candado opcional, apagado por defecto
 
 Para agregar un campo: `supabase/schema.sql` → `src/lib/types.ts` →
 el formulario correspondiente → `src/lib/actions.ts`.
-
----
-
-## Pendiente: integración con Meta Ads
-
-La sección Anuncios es solo visual. En `src/lib/ads-mock.ts` está comentado, con
-endpoints y campos concretos, exactamente qué reemplazar:
-
-- el endpoint de insights de la Marketing API y sus parámetros
-- de dónde salen las conversiones (`actions`, y qué `action_type` sirve para
-  restaurantes)
-- la columna `meta_ad_account_id` que hay que agregar a `clients`
-- por qué el token va como System User y sin prefijo `NEXT_PUBLIC_`
-
-La UI ya consume el resultado de `getAdsInsights()`, así que al conectar la API
-no hay que tocar las pantallas.

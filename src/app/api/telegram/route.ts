@@ -1,20 +1,22 @@
 import type { NextRequest } from "next/server";
+import { anotarProspectos, textoAnotado, textoAviso, textoSeguimiento } from "@/lib/anotar";
 import { repo } from "@/lib/data";
-import { separar, transcribir } from "@/lib/dictado";
-import { cleanTitles } from "@/lib/pendientes";
-import { botToken, downloadFile, sendMessage, telegram, webhookSecret } from "@/lib/telegram";
+import { todayISO } from "@/lib/dates";
+import { interpretar, transcribir } from "@/lib/dictado";
+import { DEFAULT_FOLLOW_UP_DAYS } from "@/lib/seguimiento";
+import { botToken, downloadFile, sendMessage, sendTyping, telegram, webhookSecret } from "@/lib/telegram";
 
 /**
- * El bot de Telegram de "Por hacer".
+ * El bot de Telegram del CRM.
  *
  *   POST  Telegram manda acá cada mensaje que le escribís al bot. Un audio se
- *         transcribe y se parte en pendientes; un texto entra tal cual, un
- *         pendiente por renglón.
+ *         transcribe; después Claude separa lo que es de un prospecto (va al
+ *         Pipeline) de los pendientes sueltos (van a Por hacer).
  *   GET   Conecta el bot con la app. Se abre una vez, después de cargar las
  *         variables en Vercel, y muestra qué falta.
  */
 export const dynamic = "force-dynamic";
-// Bajar, transcribir y separar un audio lleva unos segundos.
+// Bajar, transcribir e interpretar un audio lleva unos segundos.
 export const maxDuration = 60;
 
 interface Message {
@@ -24,9 +26,29 @@ interface Message {
   audio?: { file_id: string };
 }
 
-const AYUDA =
-  "Mandame un audio o un texto con lo que tenés que hacer y lo anoto en Por hacer, en el CRM. " +
-  "En un mismo audio podés decir varias cosas: las anoto por separado.";
+/** Lo que aparece en el menú "/" del chat. */
+const COMMANDS = [
+  { command: "seguimiento", description: "A quién tenés que escribirle" },
+  { command: "ayuda", description: "Cómo contarle las cosas al bot" },
+];
+
+const AYUDA = `Mandame un audio o un texto y lo anoto en el CRM.
+
+PROSPECTOS → Pipeline. Decí el negocio, qué pasó y qué sigue:
+«La Pasiva: le mandé la demo, le gustó. Llamarlo el jueves.»
+«Nuevo: Parrilla El Fogón, el dueño es Martín, 099 123 456, quiere web. Le escribí por Instagram.»
+«Sushi Kai me pidió el precio, le mandé la propuesta.»
+«Pasame La Nonna al lunes.»
+«Café Aurora cerró» / «Café Aurora dijo que no.»
+
+Las etapas se dicen como te salgan: lo contacté · le mandé la demo · le mandé la propuesta · lo está pensando · cerró · dijo que no.
+Si no decís cuándo seguir, te lo pongo para dentro de ${DEFAULT_FOLLOW_UP_DAYS} días: así ninguno queda sin fecha y no se te pierde.
+
+LO DEMÁS → Por hacer: «Comprar tóner y llamar al contador.»
+
+En un mismo audio podés mezclar varias cosas: las separo.
+
+/seguimiento — a quién tenés que escribirle (o preguntámelo en un audio)`;
 
 export async function POST(req: NextRequest) {
   const token = botToken();
@@ -61,45 +83,79 @@ async function answer(msg: Message) {
   // Cualquiera puede encontrar el bot y escribirle: sólo anota lo tuyo.
   if (String(chat) !== owner) return;
 
+  const today = todayISO();
   const file = msg.voice ?? msg.audio;
-  if (!file && (!msg.text || msg.text.startsWith("/"))) {
-    await sendMessage(chat, AYUDA);
+  const text = msg.text?.trim();
+
+  if (!file) {
+    if (!text) return void (await sendMessage(chat, AYUDA));
+    if (text.startsWith("/")) {
+      // "/seguimiento" o "/seguimiento@Micrm7107_bot" desde un grupo.
+      const cmd = text.slice(1).split(/[\s@]/)[0].toLowerCase();
+      if (["seguimiento", "pipeline", "hoy"].includes(cmd)) {
+        await sendMessage(chat, textoSeguimiento(await repo().listProspects(), today));
+      } else {
+        await sendMessage(chat, AYUDA);
+      }
+      return;
+    }
+  }
+
+  // Transcribir y pensar lleva unos segundos: que se vea que está en eso.
+  await sendTyping(chat).catch(() => {});
+  const [prospects, clients] = await Promise.all([repo().listProspects(), repo().listClients()]);
+
+  let mensaje = text ?? "";
+  if (file) {
+    const names = [...new Set([...clients, ...prospects].map((x) => x.business_name.trim()).filter(Boolean))];
+    const { audio, path } = await downloadFile(file.file_id);
+    // Las notas de voz llegan como .oga; OpenAI las reconoce como .ogg.
+    mensaje = await transcribir(
+      audio,
+      path.split("/").pop()!.replace(/\.oga$/, ".ogg"),
+      names.slice(0, 80),
+    );
+    if (!mensaje) return void (await sendMessage(chat, "No escuché nada en el audio."));
+  }
+
+  const interp = await interpretar(
+    mensaje,
+    {
+      today,
+      prospects: prospects.slice(0, 200),
+      clients: clients.map((c) => c.business_name),
+    },
+    file ? "audio" : "texto",
+  );
+
+  const anotados = await anotarProspectos(interp.prospectos, today);
+  if (interp.pendientes.length) await repo().addTodos(interp.pendientes);
+
+  if (!anotados.length && !interp.pendientes.length && !interp.ver_seguimiento) {
+    await sendMessage(chat, `No encontré nada para anotar. Entendí: «${mensaje}»`);
     return;
   }
 
-  let titles: string[];
-  if (file) {
-    const names = await businessNames();
-    const { audio, path } = await downloadFile(file.file_id);
-    // Las notas de voz llegan como .oga; OpenAI las reconoce como .ogg.
-    const heard = await transcribir(audio, path.split("/").pop()!.replace(/\.oga$/, ".ogg"), names);
-    if (!heard) {
-      await sendMessage(chat, "No escuché nada en el audio.");
-      return;
-    }
-    titles = await separar(heard, names);
-    if (!titles.length) {
-      await sendMessage(chat, `No encontré nada para anotar. Entendí: «${heard}»`);
-      return;
-    }
-  } else {
-    titles = cleanTitles(msg.text!.split("\n"));
-  }
-
-  await repo().addTodos(titles);
+  // Después de anotar, para que lo que se acaba de cargar ya cuente.
+  const ahora = anotados.length ? await repo().listProspects() : prospects;
   const host = process.env.VERCEL_PROJECT_PRODUCTION_URL;
-  await sendMessage(
-    chat,
-    `Anotado:\n${titles.map((t) => `• ${t}`).join("\n")}` +
-      (host ? `\n\nhttps://${host}/pendientes` : ""),
-  );
-}
-
-/** Clientes y prospectos, para que el audio los escriba bien. */
-async function businessNames() {
-  const [clients, prospects] = await Promise.all([repo().listClients(), repo().listProspects()]);
-  const names = [...clients, ...prospects].map((x) => x.business_name.trim()).filter(Boolean);
-  return [...new Set(names)].slice(0, 80);
+  const parts: string[] = [];
+  if (anotados.length) {
+    parts.push(["Pipeline:", ...anotados.map((a) => textoAnotado(a, today))].join("\n"));
+  }
+  if (interp.pendientes.length) {
+    parts.push(
+      ["Por hacer:", ...interp.pendientes.map((t) => `• ${t}`)].join("\n") +
+        (host ? `\nhttps://${host}/pendientes` : ""),
+    );
+  }
+  if (interp.ver_seguimiento) {
+    parts.push(textoSeguimiento(ahora, today));
+  } else {
+    const aviso = textoAviso(ahora, today);
+    if (aviso) parts.push(aviso);
+  }
+  await sendMessage(chat, parts.join("\n\n"));
 }
 
 export async function GET(req: NextRequest) {
@@ -124,6 +180,7 @@ export async function GET(req: NextRequest) {
       secret_token: webhookSecret(token),
       allowed_updates: ["message"],
     });
+    await telegram("setMyCommands", { commands: COMMANDS });
     const me = await telegram<{ username: string }>("getMe");
     lines.push(`✓ Bot @${me.username} conectado: lo que le mandes llega a https://${host}/api/telegram`);
   } catch (e) {
@@ -139,8 +196,8 @@ export async function GET(req: NextRequest) {
       ? "✓ OPENAI_API_KEY: entiende audios"
       : "✗ Falta OPENAI_API_KEY: sin eso no entiende audios (los textos sí)",
     has("ANTHROPIC_API_KEY")
-      ? "✓ ANTHROPIC_API_KEY: parte cada audio en pendientes"
-      : "· Sin ANTHROPIC_API_KEY: cada audio entra entero, como un solo pendiente",
+      ? "✓ ANTHROPIC_API_KEY: entiende qué va al Pipeline y qué a Por hacer"
+      : "· Sin ANTHROPIC_API_KEY: todo va a Por hacer (cada audio entero, como un solo pendiente) y el Pipeline no se toca",
   );
   if (process.env.VERCEL && !bypass) {
     lines.push(

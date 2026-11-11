@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { relativeDay, shortDate, todayISO } from "@/lib/dates";
+import { DEFAULT_FOLLOW_UP, isOpenStage, lastContactLabel } from "@/lib/seguimiento";
 import { INTEREST_LABEL, SOURCE_LABEL, STAGES, STAGE_LABEL, type Prospect, type ProspectStage } from "@/lib/types";
 import { waLink } from "@/lib/whatsapp";
 import { IconWhatsApp } from "../icons";
@@ -61,9 +62,10 @@ export function ProspectCard({
         <span className="chip bg-bg text-muted">{SOURCE_LABEL[p.source]}</span>
       </div>
 
-      {p.next_action && (
+      {/* Con fecha pero sin texto queda así después de un "+3d". */}
+      {(p.next_action || due) && (
         <p className="mt-1.5 text-xs leading-snug">
-          {p.next_action}
+          {p.next_action ?? DEFAULT_FOLLOW_UP}
           {due && (
             <span
               className={`ml-1 font-bold ${
@@ -73,6 +75,12 @@ export function ProspectCard({
               · {overdue || dueToday ? relativeDay(due, today) : shortDate(due)}
             </span>
           )}
+        </p>
+      )}
+
+      {!due && isOpenStage(p.stage) && (
+        <p className="mt-1.5 text-xs font-semibold leading-snug text-warn">
+          Sin próximo paso · {lastContactLabel(p, today)}
         </p>
       )}
 

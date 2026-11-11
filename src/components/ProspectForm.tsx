@@ -131,7 +131,7 @@ export function ProspectForm({ prospect }: { prospect?: Prospect }) {
           <span className="label">Notas</span>
           <textarea
             name="notes"
-            rows={3}
+            rows={5}
             defaultValue={p?.notes ?? ""}
             placeholder="Qué le interesa, objeciones, contexto…"
             className="field resize-y"

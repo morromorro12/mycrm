@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AttentionList } from "@/components/AttentionList";
 import { AdBalanceChips } from "@/components/clients/AdAccount";
 import { MetasCard } from "@/components/metas/parts";
+import { AdriftList } from "@/components/pipeline/AdriftList";
 import { TodayRoutine } from "@/components/semana/TodayRoutine";
 import { PageTitle } from "@/components/ui";
 import { adOverview } from "@/lib/ad-balance";
@@ -17,6 +18,7 @@ import { repo } from "@/lib/data";
 import { currentPeriod, periodLabel, todayISO } from "@/lib/dates";
 import { metas } from "@/lib/metas";
 import { rutina } from "@/lib/rutina";
+import { followUps } from "@/lib/seguimiento";
 import { formatMoney, formatTotals, type MoneyByCurrency } from "@/lib/money";
 import type { CurrencyCode } from "@/lib/types";
 
@@ -43,6 +45,7 @@ export default async function Dashboard() {
   const ads = adOverview(clients);
   const routine = rutina(habits, checks, cold, { today });
   const goals = metas(cold, ledger.total.UYU, routine, today);
+  const { adrift } = followUps(prospects, today);
 
   // Lo que las promos de primer mes dejan afuera de este mes, para que se
   // entienda por qué cobrado + pendiente no llega al MRR.
@@ -208,6 +211,13 @@ export default async function Dashboard() {
         </div>
         <AttentionList items={items} />
       </section>
+
+      {/* Los prospectos que nunca aparecen arriba porque no tienen fecha. */}
+      {adrift.length > 0 && (
+        <div className="mt-3">
+          <AdriftList prospects={adrift} today={today} limit={3} />
+        </div>
+      )}
 
       {/* Pauta con tu tarjeta: quién te debe plata de Meta */}
       {ads.rows.length > 0 && (

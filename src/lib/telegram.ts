@@ -22,6 +22,11 @@ export function sendMessage(chatId: number, text: string) {
   return telegram("sendMessage", { chat_id: chatId, text, link_preview_options: { is_disabled: true } });
 }
 
+/** "escribiendo…" arriba del chat mientras transcribe y piensa. */
+export function sendTyping(chatId: number) {
+  return telegram("sendChatAction", { chat_id: chatId, action: "typing" });
+}
+
 /** Baja un audio que mandaste al bot. `path` trae la extensión del archivo. */
 export async function downloadFile(fileId: string) {
   const { file_path } = await telegram<{ file_path: string }>("getFile", { file_id: fileId });
